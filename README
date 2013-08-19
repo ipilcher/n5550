@@ -1,0 +1,41 @@
+Thecus N5550 Hardware Support
+Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
+=================================================
+
+For RHEL/CentOS/Scientific Linux 6.  Requires kernel-ml (and kernel-ml-devel)
+from elrepo.
+
+
+Kernel Modules
+--------------
+
+n5550_ahci_leds - "Hooks" into libahci module to provide LED triggers for disk
+	activity.  Must be loaded *before* any other modules (such as ahci) that
+	use libahci.
+
+	Can only be unloaded after being disabled with:
+
+		echo 0 > /sys/class/n5550_ahci_leds/enabled
+
+	Disabling will only work if no other libahci users are loaded.
+
+n5550_board - Sets up chipset, LEDs, GPIOs, etc.  Disk activity LEDs have
+	default triggers, so they should "just work" once both modules are
+	loaded.
+
+
+Configuration Files
+-------------------
+
+modprobe_n5550.conf - Copy to /etc/modprobe.d/n5550.conf.  Makes modprobe load
+	n5550_ahci_leds whenever it loads libahci.
+
+dracut_n5550.conf - Copy to /etc/dracut.conf.d/n5550.conf.  Makes dracut
+	include n5550_ahci_leds module in initramfs.
+
+
+LCD
+---
+
+test2.c - Can be used to reset and send messages to the ATmega168 micro-
+	controller which manages the front-panel LCD.
