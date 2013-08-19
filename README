@@ -39,3 +39,18 @@ LCD
 
 test2.c - Can be used to reset and send messages to the ATmega168 micro-
 	controller which manages the front-panel LCD.
+
+
+Buttons
+-------
+
+I have not been able to read button presses/status from the ATmega168.  However,
+it is possible to read them via jumper block next to the LCD connection.  These
+jumpers are used by the Thecus firmware to identify the NAS model on which it is
+running, and they are readable via GPIO pins on one of the PCA9532 LED dimmers
+(currently GPIOs 16-19).
+
+To do this, remove the 3 jumpers from the block and shift the button module
+ribbon cable from its normal connector onto the jumper block.  (After doing
+this, the Thecus firmware will not function properly ... unless someone figures
+out the proper button to hold down while it is booting.)
