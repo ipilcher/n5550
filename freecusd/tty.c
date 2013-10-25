@@ -14,26 +14,25 @@
  *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <termios.h>
-#include <unistd.h>
-#include <string.h>
-
 #include "freecusd.h"
 
-int fcd_open_tty(const char *tty)
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <termios.h>
+#include <string.h>
+#include <fcntl.h>
+
+int fcd_tty_open(const char *tty)
 {
 	struct termios tio;
 	int fd;
 
-	fd = open(tty, O_RDWR | O_NOCTTY);
+	fd = open(tty, O_RDWR | O_NOCTTY | O_CLOEXEC);
 	if (fd == -1)
-		FCD_ABORT("Could not open LCD serial port (%s): %m\n", tty);
+		FCD_PABORT(tty);
 
 	if (tcgetattr(fd, &tio) == -1) {
-		FCD_ERR("tcgetattr(%s): %m\n", tty);
+		FCD_PERROR("tcgetattr");
 		goto tty_setup_failed;
 	}
 
@@ -45,7 +44,7 @@ int fcd_open_tty(const char *tty)
 	 */
 
 	if (tcflush(fd, TCIFLUSH) == -1)
-		FCD_ERR("tcflush(%s): %m\n", tty);
+		FCD_PERROR("tcflush");
 
         tio.c_iflag = IGNPAR;
         tio.c_oflag = 0;
@@ -55,15 +54,15 @@ int fcd_open_tty(const char *tty)
         tio.c_cc[VMIN] = 1;
 
 	if (cfsetospeed(&tio, B9600) == -1)
-		FCD_ERR("cfsetospeed: %m\n");
+		FCD_PERROR("cfsetospeed");
 
 	if (tcsetattr(fd, TCSANOW, &tio) == -1)
-		FCD_ERR("tcsetattr(%s): %m\n", tty);
+		FCD_PERROR("tcsetattr");
 
 	/* Check that tcsetattr actually made *all* changes */
 
         if (tcgetattr(fd, &tio) == -1) {
-		FCD_ERR("tcgetattr(%s): %m\n", tty);
+		FCD_PERROR("tcgetattr");
 		FCD_WARN("Cannot check LCD serial port parameters\n");
 	}
 	else {
@@ -86,16 +85,10 @@ tty_setup_failed:
 	return fd;
 }
 
-void fcd_write_msg(int fd, struct fcd_monitor *mon)
+void fcd_tty_write_msg(int fd, struct fcd_monitor *mon)
 {
 	static uint8_t seq = 1;
 	int ret;
-
-	if (mon->monitor_fn != 0) {
-		ret = pthread_mutex_lock(&mon->mutex);
-		if (ret != 0)
-			FCD_ABORT("pthread_mutex_lock: %s\n", strerror(ret));
-	}
 
 	mon->buf[0]  = 0x02;
 	mon->buf[1]  = seq++;
@@ -105,17 +98,8 @@ void fcd_write_msg(int fd, struct fcd_monitor *mon)
 	mon->buf[65] = 0x03;
 
 	ret = write(fd, mon->buf, sizeof mon->buf);
-	if (ret == -1) {
-		FCD_ERR("write: %m\n");
-	}
-	else if (ret != sizeof mon->buf) {
-		FCD_ERR("Only wrote %d bytes (of %zu) to LCD serial port\n",
-			ret);
-	}
-
-	if (mon->monitor_fn != 0) {
-		ret = pthread_mutex_unlock(&mon->mutex);
-		if (ret != 0)
-			FCD_ABORT("pthread_mutex_unlock: %s\n", strerror(ret));
-	}
+	if (ret == -1)
+		FCD_PERROR("write");
+	else if (ret != sizeof mon->buf)
+		FCD_ERR("Incomplete write (%d bytes)\n", ret);
 }

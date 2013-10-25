@@ -14,49 +14,134 @@
  *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
+#include "freecusd.h"
+
+#include <limits.h>
 #include <string.h>
 #include <regex.h>
 #include <errno.h>
-#include <limits.h>
 #include <fcntl.h>
 
-#include "freecusd.h"
+/* Max size of a RAID array kernel name - 11 chars + terminating 0 */
+#define FCD_RAID_DEVNAME_SIZE		12
 
-#define FCD_RAID_BUF_CHUNK	2000
-#define FCD_RAID_MAX_CHUNKS	32
+/* /sys/devices/virtual/block/<DEV>/md/array_state; <DEV> is 11 chars max */
+#define FCD_RAID_SYSFS_FILE_SIZE	54
 
-#define FCD_RAID_DEVNAME_SIZE	8
+/* Buffer size required for a UUID - aaaaaaaa:bbbbbbbb:cccccccc:dddddddd */
+#define FCD_RAID_UUID_BUF_SIZE		36
 
-/* Max # of captures in any regex + 1 (for the complete match) */
-#define FCD_RAID_MATCHES_SIZE	7
+/* Max size of buffer used to read /etc/mdadm.conf and /proc/mdstat */
+#define FCD_RAID_FILE_BUF_SIZE		20000
 
-static const char *const fcd_raid_regexes[3] = {
-
-	/*
-	 * Matches the initial portion of an array entry in /proc/mdstat
-	 */
+/*
+ * Regex to match/parse the initial portion of an array in /proc/mdstat
+ */
+static const char fcd_raid_mdstat_array_pattern_1[] =
 	"^([^[:space:]]+) : "				// 1 - RAID device
 	"(active|inactive) "				// 2 - [in]active
 	"(\\(read-only\\) |\\(auto-read-only\\) )?"	// 3 - [auto-]read-only
 	"(faulty |linear |multipath |raid0 |raid1 |"	// 4 - personality
-		"raid4 |raid5 |raid6 |raid10 )?",
+		"raid4 |raid5 |raid6 |raid10 )?";
 
-	/*
-	 * Matches a single RAID array member
-	 */
-	"^([[:alnum:]-]+)"		// 1 - block device
-	"\\[([[:digit:]]+)\\]"		// 2 - role number
-	"(\\([WFSR]\\))?",		// 3 - status
+static regmatch_t fcd_raid_mdstat_array_matches_1[5];
 
-	/*
-	 * Matches the end of the second line of an array entry
-	 */
+/*
+ * Regex to match/parse a single RAID array member in /proc/mdstat
+ */
+static const char fcd_raid_mdstat_dev_pattern[] =
+	"^([[:alnum:]-]+)"			// 1 - device name
+	"\\[([[:digit:]]+)\\]"			// 2 - device number
+	"(\\([WFSR]\\))?";			// 3 - device status
+
+static regmatch_t fcd_raid_mdstat_dev_matches[4];
+
+/*
+ * Regex to match/parse the end of the second line of an array in /proc/mdstat
+ */
+static const char fcd_raid_mdstat_array_pattern_2[] =
 	"([[:digit:]]+ near-copies )?"		// 1 - # near-copies
 	"([[:digit:]]+ (far|offset)-copies )?"	// 2 - # far/offset-copies
-	"\\[([[:digit:]]+)/"			// 4 - "ideal" devices in array
-	"([[:digit:]]+)\\]"			// 5 - current devices in array
-	" \\[([U_]+)\\]$",			// 6 - device status summary
+	"\\[([[:digit:]]+)/"			// 4 - "ideal" devices
+	"([[:digit:]]+)\\]"			// 5 - current devices
+	" \\[([U_]+)\\]$";			// 6 - device status summary
+
+static regmatch_t fcd_raid_mdstat_array_matches_2[7];
+
+/*
+ * Regex to match/parse an array that is identified by UUID in /etc/mdadm.conf
+ */
+static const char fcd_raid_conf_array_pattern[] =
+	"^ARRAY\\s+(<ignore>\\s+)?[^#]*"		// 1 - <ignore>
+	"\\bUUID=(([0-9a-f]{8}:){3}[0-9a-f]{8})\\b";	// 2 - UUID
+
+static regmatch_t fcd_raid_conf_array_matches[3];
+
+/*
+ * Regex to match/parse the MD_UUID in the output of mdadm --detail --export
+ */
+static const char fcd_raid_detail_pattern[] =
+	"^MD_UUID=(([0-9a-f]{8}:){3}[0-9a-f]{8})$";	// 1 - UUID
+
+static regmatch_t fcd_raid_detail_matches[2];
+
+struct fcd_raid_regex {
+	int cflags;
+	const char *pattern;
+	regex_t regex;
+	regmatch_t *matches;
+	size_t nmatch;
 };
+
+static struct fcd_raid_regex fcd_raid_regexes[] = {
+	{
+		.cflags 	= REG_EXTENDED | REG_NEWLINE,
+		.pattern	= fcd_raid_mdstat_array_pattern_1,
+		.matches	= fcd_raid_mdstat_array_matches_1,
+		.nmatch		= FCD_ARRAY_SIZE(
+					fcd_raid_mdstat_array_matches_1),
+	},
+	{
+		.cflags		= REG_EXTENDED | REG_NEWLINE,
+		.pattern	= fcd_raid_mdstat_dev_pattern,
+		.matches	= fcd_raid_mdstat_dev_matches,
+		.nmatch		= FCD_ARRAY_SIZE(fcd_raid_mdstat_dev_matches),
+	},
+	{
+		.cflags		= REG_EXTENDED | REG_NEWLINE,
+		.pattern	= fcd_raid_mdstat_array_pattern_2,
+		.matches	= fcd_raid_mdstat_array_matches_2,
+		.nmatch		= FCD_ARRAY_SIZE(
+					fcd_raid_mdstat_array_matches_2),
+	},
+	{
+		.cflags		= REG_EXTENDED | REG_NEWLINE | REG_ICASE,
+		.pattern	= fcd_raid_conf_array_pattern,
+		.matches	= fcd_raid_conf_array_matches,
+		.nmatch		= FCD_ARRAY_SIZE(fcd_raid_conf_array_matches),
+	},
+	{
+		.cflags		= REG_EXTENDED | REG_NEWLINE,
+		.pattern	= fcd_raid_detail_pattern,
+		.matches	= fcd_raid_detail_matches,
+		.nmatch		= FCD_ARRAY_SIZE(fcd_raid_detail_matches),
+	},
+};
+
+static char fcd_raid_mdadm_dev[FCD_RAID_DEVNAME_SIZE + 5] = "/dev/";
+
+static char *fcd_raid_mdadm_cmd[] = {
+	"/sbin/mdadm",
+	"mdadm",
+	"--detail",
+	"--export",
+	fcd_raid_mdadm_dev,
+	NULL
+};
+
+/* Buffer used by fcd_raid_get_uuid for mdadm output */
+static char *fcd_raid_uuid_buf = NULL;
+static size_t fcd_raid_uuid_buf_size = 0;
 
 enum fcd_raid_type {
 	FCD_RAID_TYPE_FAULTY,
@@ -88,16 +173,18 @@ const struct fcd_raid_type_match fcd_raid_type_matches[] = {
 };
 
 enum fcd_raid_arr_stat {
-	FCD_RAID_ARRAY_STOPPED = 0,	// not listed in /proc/mdstat
+	FCD_RAID_ARRAY_STOPPED = 0,	/* not listed in /proc/mdstat */
 	FCD_RAID_ARRAY_INACTIVE,
-	FCD_RAID_ARRAY_ACTIVE,		// ... but not one of the statuses below
+	FCD_RAID_ARRAY_ACTIVE,		/* but not one of the statuses below */
 	FCD_RAID_ARRAY_READONLY,
 	FCD_RAID_ARRAY_DEGRADED,
 	FCD_RAID_ARRAY_FAILED,
 };
 
 enum fcd_raid_dev_stat {
-	FCD_RAID_DEV_MISSING = 0,
+	FCD_RAID_DEV_EXPECTED = -1,	/* only used in fcd_raid_parse_devs */
+	FCD_RAID_DEV_UNKNOWN = 0,
+	FCD_RAID_DEV_MISSING,		/* should be a member of the array */
 	FCD_RAID_DEV_ACTIVE,
 	FCD_RAID_DEV_FAILED,
 	FCD_RAID_DEV_SPARE,
@@ -106,7 +193,11 @@ enum fcd_raid_dev_stat {
 };
 
 struct fcd_raid_array {
+	uint32_t uuid[4];
+	struct fcd_raid_array *next;
 	char name[FCD_RAID_DEVNAME_SIZE];
+	int sysfs_fd;
+	int transient;
 	int ideal_devs;
 	int current_devs;
 	enum fcd_raid_type type;
@@ -114,18 +205,244 @@ struct fcd_raid_array {
 	enum fcd_raid_dev_stat dev_status[5];
 };
 
-static struct fcd_raid_array fcd_raid_arrays[20] = {
-	{ .name = "md1" },	{ .name = "md2" },
-	{ .name = "md3" },	{ .name = "md4" },
-	{ .name = "md5" },	{ .name = "md6" },
-	{ .name = "md7" },	{ .name = "md8" },
-	{ .name = "md9" },	{ .name = "md10" },
-	{ .name = "md11" },	{ .name = "md12" },
-	{ .name = "md13" },	{ .name = "md14" },
-	{ .name = "md15" },	{ .name = "md16" },
-	{ .name = "md17" },	{ .name = "md18" },
-	{ .name = "md19" },	{ .name = "md20" },
-};
+static struct fcd_raid_array *fcd_raid_list = NULL;
+static struct fcd_raid_array **fcd_raid_list_end = &fcd_raid_list;
+
+static void fcd_raid_list_append(struct fcd_raid_array *array)
+{
+	array->next = NULL;
+	*fcd_raid_list_end = array;
+	fcd_raid_list_end = &array->next;
+}
+
+static struct fcd_raid_array *fcd_raid_find_by_substr(const char *s, size_t len)
+{
+	struct fcd_raid_array *array;
+
+	for (array = fcd_raid_list; array != NULL; array = array->next) {
+
+		if (strlen(array->name) == len &&
+				memcmp(s, array->name, len) == 0)
+			return array;
+	}
+
+	return NULL;
+}
+#if 0
+static struct fcd_raid_array *fcd_raid_find_by_name(const char *name)
+{
+	return fcd_raid_find_by_substr(name, strlen(name));
+}
+#endif
+static struct fcd_raid_array *fcd_raid_find_by_uuid(const uint32_t *uuid)
+{
+	struct fcd_raid_array *array;
+
+	for (array = fcd_raid_list; array != NULL; array = array->next) {
+
+		if (memcmp(array->uuid, uuid, sizeof *uuid) == 0)
+			return array;
+	}
+
+	return NULL;
+}
+
+static int fcd_raid_close_array_fd(struct fcd_raid_array *array)
+{
+	if (close(array->sysfs_fd) == -1) {
+		FCD_PERROR("close");
+		return -1;
+	}
+
+	array->sysfs_fd = -1;
+
+	memset(array->name, 0, sizeof array->name);
+
+	return 0;
+}
+
+static int fcd_raid_array_unchanged(struct fcd_raid_array *array)
+{
+	ssize_t ret;
+	char c;
+
+	if (lseek(array->sysfs_fd, SEEK_SET, 0) == -1) {
+		FCD_PERROR("lseek");
+		return -1;
+	}
+
+	ret = read(array->sysfs_fd, &c, 1);
+
+	switch (ret) {
+
+		case 1:		return 1;
+
+		case 0:		FCD_ERR("Unexpected EOF\n");
+				return -1;
+
+		case -1:	if (errno == ENODEV)
+					return fcd_raid_close_array_fd(array);
+				FCD_PERROR("read");
+				return -1;
+
+		default:	FCD_ABORT("read returned %zd\n", ret);
+	}
+}
+
+static void fcd_raid_parse_uuid(uint32_t *uuid, const char *s)
+{
+	int i;
+
+	/*
+	 * Called from fcd_raid_get_uuid and fcd_raid_read_mdadm_conf, both of
+	 * which use regular expressions that only match valid UUIDs.
+	 */
+
+	for (i = 3; i >= 0; --i, s += 9)
+		uuid[i] = (uint32_t)strtoul(s, NULL, 16);
+}
+
+static int fcd_raid_get_uuid(uint32_t *uuid, const char *c,
+			     const regmatch_t *match, const int *pipe_fds)
+{
+	static const struct fcd_raid_regex *const regex = &fcd_raid_regexes[4];
+	static regmatch_t *const matches = fcd_raid_detail_matches;
+	struct timespec timeout;
+	size_t name_len;
+	int ret, status;
+
+	/*
+	 * fcd_raid_get_uuid is only called from fcd_raid_find_array which
+	 * checks the length of the device name
+	 */
+
+	name_len = match->rm_eo - match->rm_so;
+	memcpy(fcd_raid_mdadm_dev + 5, c + match->rm_so, name_len);
+	(fcd_raid_mdadm_dev + 5)[name_len] = 0;
+
+	timeout.tv_sec = 2;
+	timeout.tv_nsec = 0;
+
+	ret = fcd_cmd_output(&status, fcd_raid_mdadm_cmd, &fcd_raid_uuid_buf,
+			     &fcd_raid_uuid_buf_size, 1000, &timeout, pipe_fds);
+	if (ret < 0) {
+		if (ret == -2)
+			FCD_WARN("mdadm command timed out\n");
+		return ret;
+	}
+
+	if (status != 0) {
+		FCD_WARN("Non-zero mdadm exit status: %d\n");
+		return -1;
+	}
+
+	ret = regexec(&regex->regex, fcd_raid_uuid_buf,
+		      regex->nmatch, matches, 0);
+	if (ret != 0) {
+		FCD_WARN("Error parsing mdadm output\n");
+		return -1;
+	}
+
+	fcd_raid_parse_uuid(uuid, fcd_raid_uuid_buf + matches[1].rm_so);
+
+	return 0;
+}
+
+static struct fcd_raid_array *fcd_raid_array_alloc(void)
+{
+	static const struct fcd_raid_array template = {
+		.sysfs_fd	= -1,
+	};
+
+	struct fcd_raid_array *array;
+
+	array = malloc(sizeof *array);
+	if (array == NULL)
+		FCD_PERROR("malloc");
+	else
+		*array = template;
+
+	return array;
+}
+
+static int fcd_raid_find_array_error(int fd, int ret)
+{
+	if (close(fd) == -1) {
+		FCD_PERROR("close");
+		return -1;
+	}
+
+	return ret;
+}
+
+/*
+ * Returns 0 if array name/UUID mapping is known to have been stable since the
+ * previous pass, 1 if mapping may have changed (-1 = error, -2 = timeout, -3 =
+ * exit signal received, -4 = mdadm output buffer size exceeded)
+ */
+static int fcd_raid_find_array(struct fcd_raid_array **array, const char *buf,
+			       const regmatch_t *match, const int *pipe_fds)
+{
+	static char sysfs_file[FCD_RAID_SYSFS_FILE_SIZE];
+	int ret, sysfs_fd;
+	uint32_t uuid[4];
+	size_t name_len;
+
+	name_len = match->rm_eo - match->rm_so;
+	if (name_len >= FCD_RAID_DEVNAME_SIZE - 1) {
+		FCD_WARN("RAID device name '%.*s' too long\n", (int)name_len,
+			 buf + match->rm_so);
+#ifdef __OPTIMIZE_SIZE__
+		/* See https://bugzilla.redhat.com/show_bug.cgi?id=1018422 */
+		*array = NULL;
+#endif
+		return -1;
+	}
+
+	*array = fcd_raid_find_by_substr(buf + match->rm_so, name_len);
+	if (*array != NULL) {
+
+		ret = fcd_raid_array_unchanged(*array);
+		if (ret == -1)
+			return -1;
+		if (ret == 1)
+			return 0;
+	}
+
+	sprintf(sysfs_file, "/sys/devices/virtual/block/%.*s/md/array_state",
+		(int)name_len, buf + match->rm_so);
+	sysfs_fd = open(sysfs_file, O_RDONLY | O_CLOEXEC);
+	if (sysfs_fd == -1) {
+		if (errno == ENOENT)
+			return 1;
+		FCD_PERROR(sysfs_file);
+		return -1;
+	}
+
+	ret = fcd_raid_get_uuid(uuid, buf, match, pipe_fds);
+	if (ret < 0)
+		return fcd_raid_find_array_error(sysfs_fd, ret);
+
+	*array = fcd_raid_find_by_uuid(uuid);
+	if (*array == NULL) {
+		*array = fcd_raid_array_alloc();
+		if (*array == NULL)
+			return fcd_raid_find_array_error(sysfs_fd, -1);
+		memcpy((*array)->uuid, uuid, sizeof uuid);
+		(*array)->transient = 1;
+		fcd_raid_list_append(*array);
+	}
+	else if ((*array)->sysfs_fd != -1 &&
+				fcd_raid_close_array_fd(*array) == -1) {
+		return fcd_raid_find_array_error(sysfs_fd, -1);
+	}
+
+	memcpy((*array)->name, buf + match->rm_so, name_len);
+	(*array)->name[name_len] = 0;
+	(*array)->sysfs_fd = sysfs_fd;
+
+	return 1;
+}
 
 static enum fcd_raid_type fcd_raid_parse_type(const char *buf,
 					      const regmatch_t *match)
@@ -137,42 +454,26 @@ static enum fcd_raid_type fcd_raid_parse_type(const char *buf,
 	m = buf + match->rm_so;
 	len = match->rm_eo - match->rm_so;
 
-	for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_type_matches); ++i)
-	{
+	for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_type_matches); ++i) {
+
 		if (strncmp(fcd_raid_type_matches[i].match, m, len) == 0)
 			return fcd_raid_type_matches[i].type;
 	}
 
+	/* Regex should prevent this from ever happening */
 	FCD_ABORT("Unknown personality: %.20s\n", match);
 }
 
-static struct fcd_raid_array *fcd_raid_find_array(const char *buf,
-						  const regmatch_t *match)
+/*
+ * Returns # of characters matched (0 = no match, -1 = error)
+ */
+static regoff_t fcd_raid_parse_dev(const char *c, struct fcd_raid_array *array)
 {
-	const char *m;
-	size_t len;
-	unsigned i;
-
-	m = buf + match->rm_so;
-	len = match->rm_eo - match->rm_so;
-
-	for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_arrays); ++i)
-	{
-		if (strncmp(fcd_raid_arrays[i].name, m, len) == 0)
-			return &fcd_raid_arrays[i];
-	}
-
-	FCD_INFO("Ignoring unknown RAID array %.*s\n", (int)len, m);
-	return NULL;
-}
-
-static regoff_t fcd_raid_parse_dev(const char *c, const regex_t regexes[],
-				   regmatch_t matches[],
-				   struct fcd_raid_array *array)
-{
+	static const struct fcd_raid_regex *const regex = &fcd_raid_regexes[1];
+	static regmatch_t *const matches = fcd_raid_mdstat_dev_matches;
 	int i;
 
-	if (regexec(&regexes[1], c, FCD_RAID_MATCHES_SIZE, matches, 0) != 0)
+	if (regexec(&regex->regex, c, regex->nmatch, matches, 0) != 0)
 		return 0;
 
 	/* Assume that device (match 1) is sd[b-f]XX */
@@ -212,24 +513,32 @@ static regoff_t fcd_raid_parse_dev(const char *c, const regex_t regexes[],
 	return matches[0].rm_eo;
 }
 
-static int fcd_raid_parse_devs(const char *c, const regex_t regexes[],
-			       regmatch_t matches[],
-			       struct fcd_raid_array *array)
+static int fcd_raid_parse_devs(const char *c, struct fcd_raid_array *array)
 {
 	regoff_t ret;
+	size_t i;
 
-	/* FCD_RAID_DEV_MISSING == 0 */
-	memset(array->dev_status, 0, sizeof array->dev_status);
+	for (i = 0; i < FCD_ARRAY_SIZE(array->dev_status); ++i) {
 
-	while (1)
-	{
-		ret = fcd_raid_parse_dev(c, regexes, matches, array);
+		if (array->dev_status[i] != FCD_RAID_DEV_UNKNOWN)
+			array->dev_status[i] = FCD_RAID_DEV_EXPECTED;
+	}
+
+	while (1) {
+
+		ret = fcd_raid_parse_dev(c, array);
 		if (ret < 1)
 			return ret;
 
 		c += ret;
 		if (*c == ' ')
 			++c;
+	}
+
+	for (i = 0; i < FCD_ARRAY_SIZE(array->dev_status); ++i) {
+
+		if (array->dev_status[i] == FCD_RAID_DEV_EXPECTED)
+			array->dev_status[i] = FCD_RAID_DEV_MISSING;
 	}
 }
 
@@ -273,11 +582,11 @@ static int fcd_raid_r10_failed(const char *c, const regmatch_t matches[],
 		return 1;
 
 	all_disks_mask = (1 << disks) - 1;
-	chunk_disks_mask = (1 << copies) - 1;
+	chunk_disks_mask = (1 << copies) - 1;	/* Starting value; see below */
 
 	active_disks_mask = 0;
 
-	for (mask = 1, c += matches[6].rm_so + 1; *c != ']'; mask <<= 1, ++c) {
+	for (mask = 1, c += matches[6].rm_so; *c != ']'; mask <<= 1, ++c) {
 		if (*c == 'U')
 			active_disks_mask |= mask;
 	}
@@ -303,8 +612,8 @@ static int fcd_raid_r10_failed(const char *c, const regmatch_t matches[],
 static int fcd_raid_array_failed(const char *c, const regmatch_t matches[],
 				 struct fcd_raid_array *array)
 {
-	switch (array->type)
-	{
+	switch (array->type) {
+
 		/* Used for testing; not really meaningful */
 		case FCD_RAID_TYPE_FAULTY:
 			return 0;
@@ -333,20 +642,33 @@ static int fcd_raid_array_failed(const char *c, const regmatch_t matches[],
 			return fcd_raid_r10_failed(c, matches, array);
 	}
 
-	FCD_ABORT("Unreachable code\n");
+	FCD_ABORT("Invalid enum value\n");
 }
 
-static int fcd_raid_parse_array(const char *c, const regex_t regexes[],
-				regmatch_t matches[])
+/*
+ * Returns 1 if array was successfully parsed (0 = no match, -1 = error, -2 =
+ * timeout, -3 exit signal received, -4 mdadm output buffer size exceeded)
+ */
+static int fcd_raid_parse_array(int *names_changed, const char *c,
+				const int *pipe_fds)
 {
+	const struct fcd_raid_regex *regex;
 	struct fcd_raid_array *array;
+	regmatch_t *matches;
+	int ret;
 
-	if (regexec(&regexes[0], c, FCD_RAID_MATCHES_SIZE, matches, 0) != 0)
+	regex = &fcd_raid_regexes[0]; matches = regex->matches;
+
+	if (regexec(&regex->regex, c, regex->nmatch, matches, 0) != 0)
 		return 0;
 
-	array = fcd_raid_find_array(c, &matches[1]);
-	if (array == NULL)
-		return 0;
+	ret = fcd_raid_find_array(&array, c, &matches[1], pipe_fds);
+	if (ret < 0)
+		return ret;
+
+	*names_changed += ret;
+	if (*names_changed)
+		return 1;
 
 	/* Match is either "active" or "inactive" */
 	if (c[matches[2].rm_so] == 'i') {
@@ -364,7 +686,7 @@ static int fcd_raid_parse_array(const char *c, const regex_t regexes[],
 
 	c += matches[0].rm_eo;
 
-	if (fcd_raid_parse_devs(c, regexes, matches, array) == -1)
+	if (fcd_raid_parse_devs(c, array) == -1)
 		return -1;
 
 	if (array->array_status == FCD_RAID_ARRAY_INACTIVE)
@@ -376,7 +698,9 @@ static int fcd_raid_parse_array(const char *c, const regex_t regexes[],
 		return -1;
 	}
 
-	if (regexec(&regexes[2], ++c, FCD_RAID_MATCHES_SIZE, matches, 0) != 0) {
+	regex = &fcd_raid_regexes[2]; matches = regex->matches;
+
+	if (regexec(&regex->regex, ++c, regex->nmatch, matches, 0) != 0) {
 		FCD_WARN("Error parsing /proc/mdstat\n");
 		return -1;
 	}
@@ -394,42 +718,65 @@ static int fcd_raid_parse_array(const char *c, const regex_t regexes[],
 	return 1;
 }
 
-static int fcd_raid_parse_mdstat(const char *c, const regex_t regexes[])
+static int fcd_raid_parse_mdstat(const char *buf, const int *pipe_fds)
 {
-	regmatch_t matches[FCD_RAID_MATCHES_SIZE];
-	unsigned i;
-	int ret;
+	struct fcd_raid_array *array;
+	int names_changed, ret;
+	const char *c;
 
-	for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_arrays); ++i)
-		fcd_raid_arrays[i].array_status = FCD_RAID_ARRAY_STOPPED;
+	for (array = fcd_raid_list; array != NULL; array = array->next)
+		array->array_status = FCD_RAID_ARRAY_STOPPED;
 
-	while (1)
-	{
-		ret = fcd_raid_parse_array(c, regexes, matches);
-		if (ret == -1)
-			return -1;
+	/*
+	 * See http://article.gmane.org/gmane.linux.raid/44417 for an
+	 * explanation of what this loop does (along with fcd_raid_parse_array
+	 * and fcd_raid_find_array)
+	 */
 
-		/* If we just parsed an array, skip 2 lines */
-		for (ret *= 2; ret >= 0; --ret)
-		{
-			c = strchr(c, '\n');
-			if (c == NULL)
-				return 0;
-			++c;
-		}
-	}
+	do {
+		names_changed = 0;
+		c = buf;
+
+		do {
+			ret = fcd_raid_parse_array(&names_changed, c, pipe_fds);
+			if (ret == -3)
+				return -3;
+			if (ret < 0)
+				return -1;
+
+			/*
+			* If we just parsed an array, skip the next two lines
+			* (i.e. move past 3 newlines).  Otherwise, move to the
+			* next line (past 1 newline).
+			*/
+
+			for (ret *= 2; ret >= 0; --ret)	{
+
+				c = strchr(c, '\n');
+				if (c == NULL)
+					break;
+				++c;
+			}
+
+		} while (c != NULL);
+
+	} while (names_changed != 0);
+
+	return 0;
 }
 
-static int fcd_raid_regcomp(regex_t regexes[])
+static int fcd_raid_regcomp(void)
 {
+	struct fcd_raid_regex *regex;
 	size_t errbuf_size;
 	char *errbuf;
 	int ret, i;
 
-	for (i = 0; i < (int)FCD_ARRAY_SIZE(fcd_raid_regexes); ++i)
-	{
-		ret = regcomp(&regexes[i], fcd_raid_regexes[i],
-			      REG_EXTENDED | REG_NEWLINE);
+	for (i = 0; i < (int)FCD_ARRAY_SIZE(fcd_raid_regexes); ++i) {
+
+		regex = &fcd_raid_regexes[i];
+
+		ret = regcomp(&regex->regex, regex->pattern, regex->cflags);
 		if (ret != 0)
 			goto regcomp_error;
 	}
@@ -438,175 +785,267 @@ static int fcd_raid_regcomp(regex_t regexes[])
 
 regcomp_error:
 
-	errbuf_size = regerror(ret, &regexes[i], 0, 0);
+	errbuf_size = regerror(ret, &regex->regex, 0, 0);
 
 	errbuf = malloc(errbuf_size);
 	if (errbuf == NULL) {
-		FCD_ERR("malloc: %m\n");
+		FCD_PERROR("malloc");
 		FCD_WARN("Cannot format regcomp error message: code %d\n", ret);
 	}
 	else {
-		regerror(ret, &regexes[i], errbuf, errbuf_size);
+		regerror(ret, &regex->regex, errbuf, errbuf_size);
 		FCD_ERR("regcomp: %s\n", errbuf);
 		free(errbuf);
 	}
 
 	for (--i; i >= 0; --i)
-		regfree(&regexes[i]);
+		regfree(&fcd_raid_regexes[i].regex);
 
 	return -1;
 }
-
-static void fcd_raid_regfree(regex_t regexes[])
+#if 0
+static const char *fcd_raid_format_uuid(const uint32_t *uuid, char *buf)
 {
-	unsigned i;
+	sprintf(buf, "%08" PRIx32 ":%08" PRIx32 ":%08" PRIx32 ":%08" PRIx32,
+		uuid[3], uuid[2], uuid[1], uuid[0]);
 
-	for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_regexes); ++i)
-		regfree(&regexes[i]);
+	return buf;
 }
-
-static int fcd_raid_grow_buf(char **buf, size_t *buf_size)
+#endif
+static ssize_t fcd_raid_read_file(int fd, char **buf, size_t *buf_size)
 {
-	size_t new_size;
-	char *new_buf;
-
-	if (*buf_size == FCD_RAID_BUF_CHUNK * FCD_RAID_MAX_CHUNKS) {
-		FCD_WARN("Cannot read more than %d bytes from /proc/mdstat\n",
-			 FCD_RAID_BUF_CHUNK * FCD_RAID_MAX_CHUNKS);
-		return -1;
-	}
-
-	if (*buf == NULL || *buf_size == 0)
-		new_size = FCD_RAID_BUF_CHUNK;
-	else
-		new_size = *buf_size + FCD_RAID_BUF_CHUNK;
-
-	new_buf = realloc(*buf, new_size);
-	if (new_buf == NULL) {
-		FCD_ERR("realloc: %m\n");
-		return -1;
-	}
-
-	*buf = new_buf;
-	*buf_size = new_size;
-
-	return 0;
-}
-
-static int fcd_raid_read_mdstat(int fd, char **buf, size_t *buf_size)
-{
-	size_t total;
+	struct timespec timeout;
 	ssize_t ret;
 
-	if (lseek(fd, 0, SEEK_SET) == -1) {
-		FCD_ERR("lseek: %m\n");
+	timeout.tv_sec = 0;
+	timeout.tv_nsec = 0;
+
+	ret = fcd_read_all(fd, buf, buf_size, FCD_RAID_FILE_BUF_SIZE, &timeout);
+	if (ret == -2) {
+		FCD_WARN("Read from regular file timed out\n");
 		return -1;
 	}
 
-	total = 0;
+	return ret;
+}
 
-	do {
-		if (total == *buf_size)
-			fcd_raid_grow_buf(buf, buf_size);
+static int fcd_raid_read_mdadm_conf(char **buf, size_t *buf_size)
+{
+	static const struct fcd_raid_regex *const regex = &fcd_raid_regexes[3];
+	static regmatch_t *const matches = fcd_raid_conf_array_matches;
+	static const char path[] = "/etc/mdadm.conf";
+	struct fcd_raid_array *array;
+	int ret, fd;
+	char *c;
 
-		ret = read(fd, *buf + total, *buf_size - total);
-		if (ret == -1) {
-			if (errno == EINTR)
-				continue;
-			FCD_ERR("read: %m\n");
-			return -1;
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd == -1) {
+		if (errno == ENOENT)
+			return 0;
+		FCD_PERROR(path);
+		return -1;
+	}
+
+	ret = fcd_raid_read_file(fd, buf, buf_size);
+	if (ret < 0) {
+		if (close(fd) == -1)
+			FCD_PERROR("close");
+		return ret;
+	}
+
+	if (close(fd) == -1) {
+		FCD_PERROR("close");
+		return -1;
+	}
+
+	for (c = *buf; *c != 0; ++c)
+	{
+		if (regexec(&regex->regex, c, regex->nmatch, matches, 0) == 0 &&
+				matches[1].rm_so == -1)	  /* not <inactive> */
+		{
+			array = fcd_raid_array_alloc();
+			if (array == NULL)
+				return -1;
+
+			fcd_raid_parse_uuid(array->uuid, c + matches[2].rm_so);
+			fcd_raid_list_append(array);
+
+			c += matches[0].rm_eo;
 		}
 
-		total += ret;
-
-	} while (ret != 0);
-
-	if (total == 0) {
-		FCD_WARN("Read 0 bytes from /proc/mdstat\n");
-		return -1;
+		c = strchr(c, '\n');
+		if (c == NULL)
+			break;
 	}
 
-	(*buf)[total - 1] = 0;
-
 	return 0;
+}
+
+static void fcd_raid_cleanup(char *mdstat_buf, int mdstat_fd, int *pipe_fds)
+{
+	struct fcd_raid_array *array, *next;
+	size_t i;
+
+	for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_regexes); ++i)
+		regfree(&fcd_raid_regexes[i].regex);
+
+	for (array = fcd_raid_list; array != NULL; array = next) {
+
+		if (array->sysfs_fd != -1 && close(array->sysfs_fd) == -1)
+			FCD_PERROR("close");
+
+		next = array->next;
+		free(array);
+	}
+
+	if (mdstat_fd != -1 && close(mdstat_fd) == -1)
+		FCD_PERROR("close");
+	if (pipe_fds[0] != -1 && close(pipe_fds[0]) == -1)
+		FCD_PERROR("close");
+	if (pipe_fds[1] != -1 && close(pipe_fds[1]) == -1)
+		FCD_PERROR("close");
+
+	free(fcd_raid_uuid_buf);
+	free(mdstat_buf);
 }
 
 __attribute__((noreturn))
-static void fcd_raid_disable(char *mdstat_buf, int fd, regex_t regexes[],
+static void fcd_raid_disable(char *mdstat_buf, int mdstat_fd, int *pipe_fds,
 			     struct fcd_monitor *mon)
 {
-	free(mdstat_buf);
-	if (close(fd) == -1)
-		FCD_ERR("close: %m\n");
-	fcd_raid_regfree(regexes);
+	fcd_raid_cleanup(mdstat_buf, mdstat_fd, pipe_fds);
 	fcd_disable_monitor(mon);
+}
+
+static int fcd_raid_setup(int *pipe_fds, int *mdstat_fd, char **mdstat_buf,
+			  size_t *mdstat_size)
+{
+	static const char path[] = "/proc/mdstat";
+	int ret;
+
+	*mdstat_buf = NULL;
+	*mdstat_size = 0;
+	*mdstat_fd = -1;
+	pipe_fds[0] = -1;
+	pipe_fds[1] = -1;
+
+	if (fcd_raid_regcomp() == -1)
+		return -1;
+
+	if (pipe2(pipe_fds, O_CLOEXEC) == -1)
+		return -1;
+
+	ret = fcd_raid_read_mdadm_conf(mdstat_buf, mdstat_size);
+	if (ret < 0)
+		return ret;
+
+	*mdstat_fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (*mdstat_fd == -1) {
+		FCD_PERROR(path);
+		return -1;
+	}
+
+	return 0;
+}
+
+static void fcd_raid_result(int *ok, int *warn, int *fail, int *disks,
+			    const struct fcd_raid_array *array)
+{
+	enum fcd_raid_dev_stat status;
+	size_t i;
+
+	switch (array->array_status) {
+
+		case FCD_RAID_ARRAY_ACTIVE:	++(*ok);
+						return;
+
+		case FCD_RAID_ARRAY_DEGRADED:	++(*warn);
+						break;
+
+		case FCD_RAID_ARRAY_STOPPED:
+		case FCD_RAID_ARRAY_INACTIVE:	if (array->transient)
+							return;
+						/* else fall through */
+		case FCD_RAID_ARRAY_READONLY:
+		case FCD_RAID_ARRAY_FAILED:	++(*fail);
+						break;
+
+		default:
+			FCD_ABORT("Invalid array status\n");
+	}
+
+	if (array->array_status == FCD_RAID_ARRAY_STOPPED)
+		return;
+
+	for (i = 0; i < FCD_ARRAY_SIZE(array->dev_status); ++i) {
+
+		status = array->dev_status[i];
+
+		if (status == FCD_RAID_DEV_FAILED ||
+				status == FCD_RAID_DEV_MISSING ||
+				(status == FCD_RAID_DEV_UNKNOWN &&
+						array->ideal_devs == 5)) {
+			++disks[i];
+		}
+	}
 }
 
 __attribute__((noreturn))
 static void *fcd_raid_fn(void *arg)
 {
-	regex_t regexes[FCD_ARRAY_SIZE(fcd_raid_regexes)];
 	struct fcd_monitor *mon = arg;
-	char buf[21], *mdstat_buf = NULL;
-	size_t mdstat_size = 0;
-	int ret, fd, ok, warn, fail;
-	unsigned i;
+	int ret, fd, ok, warn, fail, disks[5], pipe_fds[2];
+	const struct fcd_raid_array *array;
+	char buf[21], *mdstat_buf;
+	size_t mdstat_size;
 
-	if (fcd_raid_regcomp(regexes) == -1)
-		fcd_disable_monitor(mon);
-
-	fd = open("/proc/mdstat", O_RDONLY);
-	if (fd == -1) {
-		FCD_ERR("open: %m\n");
-		fcd_raid_regfree(regexes);
-		fcd_disable_monitor(mon);
-	}
+	if (fcd_raid_setup(pipe_fds, &fd, &mdstat_buf, &mdstat_size) != 0)
+		fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
 
 	do {
 		memset(buf, ' ', sizeof buf);
 
-		if (fcd_raid_read_mdstat(fd, &mdstat_buf, &mdstat_size) == -1)
-			fcd_raid_disable(mdstat_buf, fd, regexes, mon);
+		if (lseek(fd, SEEK_SET, 0) == -1) {
+			FCD_PERROR("lseek");
+			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
+		}
 
-		if (fcd_raid_parse_mdstat(mdstat_buf, regexes) == -1)
-			fcd_raid_disable(mdstat_buf, fd, regexes, mon);
+		ret = fcd_raid_read_file(fd, &mdstat_buf, &mdstat_size);
+		if (ret == -3)
+			continue;
+		if (ret < 0)
+			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
+
+		ret = fcd_raid_parse_mdstat(mdstat_buf, pipe_fds);
+		if (ret == -3)
+			continue;
+		if (ret < 0)
+			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
 
 		ok = warn = fail = 0;
+		memset(disks, 0, sizeof disks);
 
-		for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_arrays); ++i)
-		{
-			if (fcd_raid_arrays[i].array_status ==
-					FCD_RAID_ARRAY_ACTIVE) {
-				++ok;
-			}
-			else if (fcd_raid_arrays[i].array_status ==
-					FCD_RAID_ARRAY_DEGRADED) {
-				++warn;
-			}
-			else {
-				++fail;
-			}
+		for (array = fcd_raid_list; array != NULL;
+					    array = array->next) {
+
+			fcd_raid_result(&ok, &warn, &fail, disks, array);
 		}
 
 		ret = snprintf(buf, sizeof buf, "OK:%d WARN:%d FAIL:%d",
 			       ok, warn, fail);
 		if (ret < 0) {
-			FCD_ERR("snprintf: %m\n");
-			fcd_raid_disable(mdstat_buf, fd, regexes, mon);
+			FCD_PERROR("snprintf");
+			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
 		}
 
 		if (ret < (int)sizeof buf)
 			buf[ret] = ' ';
 
-		fcd_copy_buf(buf, mon);
+		fcd_copy_buf_and_alerts(mon, buf, warn, fail, disks);
 
 	} while (fcd_sleep_and_check_exit(30) == 0);
 
-	free(mdstat_buf);
-	if (close(fd) == -1)
-		FCD_ERR("close: %m\n");
-	fcd_raid_regfree(regexes);
-
+	fcd_raid_cleanup(mdstat_buf, fd, pipe_fds);
 	pthread_exit(NULL);
 }
 
@@ -621,8 +1060,6 @@ struct fcd_monitor fcd_raid_monitor = {
 
 #if 0
 #include <fcntl.h>
-
-int fcd_foreground = 1;
 
 static const char *format_raid_type(enum fcd_raid_type type)
 {
@@ -684,52 +1121,60 @@ static const char *format_dev_status(enum fcd_raid_dev_stat status)
 	FCD_ABORT("Unknown device status\n");
 }
 
-int main(int argc __attribute__((unused)), char *argv[])
+void fcd_raid_test(void)
 {
-	regex_t regexes[FCD_ARRAY_SIZE(fcd_raid_regexes)];
-	size_t buf_size;
-	char *buf;
-	int i, fd;
+	char uuid_buf[FCD_RAID_UUID_BUF_SIZE];
+	struct timespec timeout = { 0, 0 };
+	struct fcd_raid_array *array;
+	int fd, ret, pipe_fds[2];
+	size_t buf_size = 0;
+	char *buf = NULL;
 
-	if (fcd_raid_regcomp(regexes) == -1)
-		exit(1);
+	fcd_foreground = 1;
 
-	fd = open(argv[1], O_RDONLY);
-	if (fd == -1) {
-		perror(argv[1]);
-		exit(1);
+	if (pipe2(pipe_fds, O_CLOEXEC) == -1)
+		FCD_ABORT("pipe2: %m\n");
+
+	ret = fcd_raid_regcomp();
+	if (ret != 0)
+		FCD_ABORT("fcd_raid_regcomp returned %d\n", ret);
+
+	ret = fcd_raid_read_mdadm_conf();
+	if (ret != 0)
+		FCD_ABORT("fcd_raid_read_mdadm_conf returned %d\n", ret);
+
+	for (array = fcd_raid_list; array != NULL; array = array->next)
+		puts(fcd_raid_format_uuid(array->uuid, uuid_buf));
+
+	while (1) {
+
+		fd = open("/proc/mdstat", O_RDONLY | O_CLOEXEC);
+		if (fd == -1)
+			FCD_ABORT("/proc/mdstat: %m\n");
+
+		ret = fcd_read_all(fd, &buf, &buf_size, 32000, &timeout);
+		if (ret <= 0)
+			FCD_ABORT("fcd_read_all returned %d\n", ret);
+
+		close(fd);
+
+		ret = fcd_raid_parse_mdstat(buf, pipe_fds);
+		if (ret != 0)
+			FCD_ABORT("fcd_raid_parse_mdstat returned %d\n", ret);
+
+		for (array = fcd_raid_list; array != NULL;
+					    array = array->next) {
+			printf("%s%s:\t%s\t%s\t%d/%d\t%s\n", array->name,
+			       array->transient ? "(T)" : "",
+			       fcd_raid_format_uuid(array->uuid, uuid_buf),
+			       format_raid_status(array->array_status),
+			       array->current_devs, array->ideal_devs,
+			       format_raid_type(array->type));
+		}
+
+		puts("Hit Enter to continue");
+		getchar();
+
 	}
-
-	buf = NULL;
-	buf_size = 0;
-
-	if (fcd_raid_read_mdstat(fd, &buf, &buf_size) == -1)
-		exit(1);
-
-	if (close(fd) == -1) {
-		perror("close");
-		exit(1);
-	}
-
-	if (fcd_raid_parse_mdstat(buf, regexes) == -1)
-		exit(1);
-
-	for (i = 0; i < (int)FCD_ARRAY_SIZE(fcd_raid_arrays); ++i) {
-		struct fcd_raid_array *array = &fcd_raid_arrays[i];
-		puts(array->name);
-		printf("\tideal_devs = %d\n", array->ideal_devs);
-		printf("\tcurrent_devs = %d\n", array->current_devs);
-		printf("\ttype = %s\n", format_raid_type(array->type));
-		printf("\tstatus = %s\n",
-		       format_raid_status(array->array_status));
-		printf("\tdevice status = %s/%s/%s/%s/%s\n\n",
-		       format_dev_status(array->dev_status[0]),
-		       format_dev_status(array->dev_status[1]),
-		       format_dev_status(array->dev_status[2]),
-		       format_dev_status(array->dev_status[3]),
-		       format_dev_status(array->dev_status[4]));
-	}
-
-	return 0;
 }
 #endif

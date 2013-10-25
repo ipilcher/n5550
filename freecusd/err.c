@@ -16,13 +16,13 @@
 
 #define _BSD_SOURCE	/* for vsyslog */
 
-#include <syslog.h>
-#include <stdio.h>
-#include <stdarg.h>
-
 #include "freecusd.h"
 
-void fcd_err(int priority, const char *format, ...)
+#include <syslog.h>
+#include <stdarg.h>
+#include <string.h>
+
+void fcd_err_msg(int priority, const char *format, ...)
 {
 	va_list ap;
 
@@ -34,4 +34,17 @@ void fcd_err(int priority, const char *format, ...)
 		vsyslog(priority, format, ap);
 
 	va_end(ap);
+}
+
+void fcd_err_perror(const char *msg, const char *file, int line, int fatal)
+{
+	fcd_err_msg(LOG_ERR, "%s: %s:%d: %s: %m\n", fatal ? "FATAL" : "ERROR",
+		    file, line, msg);
+}
+
+void fcd_err_pt_err(const char *msg, int err, const char *file, int line,
+		    int fatal)
+{
+	fcd_err_msg(LOG_ERR, "%s: %s:%d: %s: %s\n", fatal ? "FATAL" : "ERROR",
+		    file, line, msg, strerror(err));
 }

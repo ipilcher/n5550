@@ -14,85 +14,233 @@
  *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
-
 #include "freecusd.h"
 
-void fcd_update_alert(enum fcd_alert new, enum fcd_alert *status)
+#include <stddef.h>
+#include <fcntl.h>
+
+/* /sys/class/leds/<NAME>/brightness; <NAME> is 21 characters max */
+#define FCD_ALERT_LED_BUF_SIZE	49
+
+struct fcd_alert {
+	const char *led_name;
+	size_t mon_offset;
+	int led_fd;
+	int counter;
+};
+
+static struct fcd_alert fcd_alerts[] = {
+	{
+		.led_name	= "n5550:orange:busy",
+		.mon_offset	= offsetof(struct fcd_monitor, sys_warn),
+		.counter	= 0,
+	},
+	{
+		.led_name	= "n5550:red:fail",
+		.mon_offset	= offsetof(struct fcd_monitor, sys_fail),
+		.counter	= 0,
+	},
+	{
+		.led_name	= "n5550:red:disk-stat-0",
+		.mon_offset	= offsetof(struct fcd_monitor, disk_alerts[0]),
+		.counter	= 0,
+	},
+	{
+		.led_name	= "n5550:red:disk-stat-1",
+		.mon_offset	= offsetof(struct fcd_monitor, disk_alerts[1]),
+		.counter	= 0,
+	},
+	{
+		.led_name	= "n5550:red:disk-stat-2",
+		.mon_offset	= offsetof(struct fcd_monitor, disk_alerts[2]),
+		.counter	= 0,
+	},
+	{
+		.led_name	= "n5550:red:disk-stat-3",
+		.mon_offset	= offsetof(struct fcd_monitor, disk_alerts[3]),
+		.counter	= 0,
+	},
+	{
+		.led_name	= "n5550:red:disk-stat-4",
+		.mon_offset	= offsetof(struct fcd_monitor, disk_alerts[4]),
+		.counter	= 0,
+	},
+};
+
+/*******************************************************************************
+ *
+ * Called in monitor threads
+ *
+ ******************************************************************************/
+
+static void fcd_alert_set(enum fcd_alert_msg *status)
 {
-	if (new == FCD_ALERT_SET) {
-		switch (*status)
-		{
-			case FCD_ALERT_SET:
-				/*
-				 * We set the alert last time through, but the
-				 * main thread hasn't noticed it yet.  We still
-				 * want to set it.
-				 */
-				break;
+	switch (*status) {
 
-			case FCD_ALERT_CLR:
-				/*
-				 * We cleared the alert last time through, but
-				 * the main thread hasn't noticed it yet.  The
-				 * fact that we cleared it last time means that
-				 * it must currently be set, which is what we
-				 * want.
-				 */
-				*status = FCD_ALERT_SET_ACK;
-				break;
+		case FCD_ALERT_SET_REQ:
+			/*
+			 * Main thread has not yet acknowledged previous set
+			 * request; keep set request pending.
+			 */
+			return;
 
-			case FCD_ALERT_SET_ACK:
-				/*
-				 * Alert is currently set, which is what we
-				 * want.
-				 */
-				break;
+		case FCD_ALERT_CLR_REQ:
+			/*
+			 * Main thread has not yet acknowledged previous clear
+			 * request.  Clear request indicates that alert is set,
+			 * so restore set ACK.
+			 */
+			*status = FCD_ALERT_SET_ACK;
+			return;
 
-			case FCD_ALERT_CLR_ACK:
-				/* Alert is currently cleared; set it. */
-				*status = FCD_ALERT_SET;
-				break;
+		case FCD_ALERT_SET_ACK:
+			/*
+			 * Alert is currently set; no action required.
+			 */
+			return;
+
+		case FCD_ALERT_CLR_ACK:
+			/*
+			 * Alert is currently not set; set it.
+			 */
+			*status = FCD_ALERT_SET_REQ;
+			return;
+	}
+
+	FCD_ABORT("Invalid alert status\n");
+}
+
+static void fcd_alert_clear(enum fcd_alert_msg *status)
+{
+	switch (*status) {
+
+		case FCD_ALERT_SET_REQ:
+			/*
+			 * Main thread has not yet acknowledged previous set
+			 * request.  Set request indicates that alear is not
+			 * set, so restore clear ACK.
+			 */
+			*status = FCD_ALERT_CLR_ACK;
+			return;
+
+		case FCD_ALERT_CLR_REQ:
+			/*
+			 * Main thread has not yet acknowledged previous clear
+			 * request; keep clear request pending.
+			 */
+			return;
+
+		case FCD_ALERT_SET_ACK:
+			/*
+			 * Alert is currently set; clear it.
+			 */
+			*status = FCD_ALERT_CLR_REQ;
+			return;
+
+		case FCD_ALERT_CLR_ACK:
+			/*
+			 * Alert is currently not set; no action required.
+			 */
+			return;
+	}
+
+	FCD_ABORT("Invalid alert status\n");
+}
+
+void fcd_alert_update(enum fcd_alert_msg new, enum fcd_alert_msg *status)
+{
+	if (new == FCD_ALERT_SET_REQ)
+		fcd_alert_set(status);
+	else if (new == FCD_ALERT_CLR_REQ)
+		fcd_alert_clear(status);
+	else
+		FCD_ABORT("Invalid alert status\n");
+}
+
+/*******************************************************************************
+ *
+ * Called in the main thread
+ *
+ ******************************************************************************/
+
+static void fcd_alert_led_on(const struct fcd_alert *alert)
+{
+	ssize_t ret;
+
+	ret = write(alert->led_fd, "255", 3);
+	if (ret == -1)
+		FCD_PABORT("write");
+	if (ret != 3)
+		FCD_ABORT("Incomplete write (%zd bytes)\n", ret);
+}
+
+static void fcd_alert_led_off(const struct fcd_alert *alert)
+{
+	ssize_t ret;
+
+	ret = write(alert->led_fd, "0", 1);
+	if (ret == -1)
+		FCD_PABORT("write");
+	if (ret != 1)
+		FCD_ABORT("Incomplete write (%zd bytes)\n", ret);
+}
+
+void fcd_alert_read_monitor(struct fcd_monitor *mon)
+{
+	enum fcd_alert_msg *msg;
+	unsigned char *mon_base;
+	struct fcd_alert *alert;
+	size_t i;
+
+	mon_base = (unsigned char *)mon;
+
+	for (i = 0; i < FCD_ARRAY_SIZE(fcd_alerts); ++i) {
+
+		alert = &fcd_alerts[i];
+		msg = (enum fcd_alert_msg *)(mon_base + alert->mon_offset);
+
+		if (*msg == FCD_ALERT_SET_REQ) {
+			++(alert->counter);
+			*msg = FCD_ALERT_SET_ACK;
+			if (alert->counter == 1)
+				fcd_alert_led_on(alert);
+		}
+		else if (*msg == FCD_ALERT_CLR_REQ) {
+			--(alert->counter);
+			if (alert->counter < 0)
+				FCD_ABORT("Negative alert counter\n");
+			*msg = FCD_ALERT_CLR_ACK;
+			if (alert->counter == 0)
+				fcd_alert_led_off(alert);
 		}
 	}
-	else if (new == FCD_ALERT_CLR) {
-		switch (*status)
-		{
-			case FCD_ALERT_SET:
-				/*
-				 * We set the alert the last time through, but
-				 * the main thread hasn't noticed it yet.  The
-				 * fact that we set it last time means that it
-				 * must currently be cleared, which is what we
-				 * want.
-				 */
-				*status = FCD_ALERT_CLR_ACK;
-				break;
+}
 
-			case FCD_ALERT_CLR:
-				/*
-				 * We cleared the alert last time through, but
-				 * the main thread hasn't noticed it yet.  We
-				 * still want to clear it.
-				 */
-				break;
+void fcd_alert_leds_close(void)
+{
+	size_t i;
 
-			case FCD_ALERT_SET_ACK:
-				/* Alert is currently set; clear it. */
-				*status = FCD_ALERT_CLR;
-				break;
+	for (i = 0; i < FCD_ARRAY_SIZE(fcd_alerts); ++i) {
 
-			case FCD_ALERT_CLR_ACK:
-				/*
-				 * Alert is currently cleared, which is what we
-				 * want.
-				 */
-				break;
-		}
+		if (close(fcd_alerts[i].led_fd) == -1)
+			FCD_PERROR("close");
 	}
-	else {
-		FCD_ABORT("%s\n", strerror(EINVAL));
+}
+
+void fcd_alert_leds_open(void)
+{
+	char buf[FCD_ALERT_LED_BUF_SIZE];
+	size_t i;
+
+	for (i = 0; i < FCD_ARRAY_SIZE(fcd_alerts); ++i) {
+
+		sprintf(buf, "/sys/class/leds/%s/brightness",
+			fcd_alerts[i].led_name);
+
+		fcd_alerts[i].led_fd = open(buf, O_WRONLY | O_CLOEXEC);
+		if (fcd_alerts[i].led_fd == -1)
+			FCD_PABORT(buf);
+
+		fcd_alert_led_off(&fcd_alerts[i]);
 	}
 }

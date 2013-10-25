@@ -14,11 +14,13 @@
  *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-#include <pthread.h>
-#include <stdio.h>
+#include "freecusd.h"
+
 #include <string.h>
 
-#include "freecusd.h"
+/* Alert thresholds */
+static const int fcd_sysfan_warn = 1200;
+static const int fcd_sysfan_fail = 500;
 
 static const char fcd_sysfan_input[] =
 		"/sys/devices/platform/it87.656/fan3_input";
@@ -27,7 +29,7 @@ __attribute__((noreturn))
 static void fcd_sysfan_close_and_disable(FILE *fp, struct fcd_monitor *mon)
 {
 	if (fclose(fp) != 0)
-		FCD_ERR("fclose: %m\n");
+		FCD_PERROR("fclose");
 	fcd_disable_monitor(mon);
 
 }
@@ -36,18 +38,18 @@ __attribute__((noreturn))
 static void *fcd_sysfan_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
+	int warn, fail, rpm, ret;
 	char buf[21];
 	FILE *fp;
-	int rpm, ret;
 
-	fp = fopen(fcd_sysfan_input, "r");
+	fp = fopen(fcd_sysfan_input, "re");
 	if (fp == NULL) {
-		FCD_ERR("fopen: %m\n");
+		FCD_PERROR("fopen");
 		fcd_disable_monitor(mon);
 	}
 
 	if (setvbuf(fp, NULL, _IONBF, 0) != 0) {
-		FCD_ERR("setvbuf: %m\n");
+		FCD_PERROR("setvbuf");
 		fcd_sysfan_close_and_disable(fp, mon);
 	}
 
@@ -57,7 +59,7 @@ static void *fcd_sysfan_fn(void *arg)
 
 		ret = fscanf(fp, "%d", &rpm);
 		if (ret == EOF) {
-			FCD_ERR("fscanf: %m\n");
+			FCD_PERROR("fscanf");
 			fcd_sysfan_close_and_disable(fp, mon);
 		}
 		else if (ret != 1) {
@@ -66,21 +68,24 @@ static void *fcd_sysfan_fn(void *arg)
 			fcd_sysfan_close_and_disable(fp, mon);
 		}
 
+		fail = (rpm <= fcd_sysfan_fail);
+		warn = fail ? 0 : (rpm <= fcd_sysfan_warn);
+
 		ret = snprintf(buf, sizeof buf, "%'d RPM", rpm);
 		if (ret < 0) {
-			FCD_ERR("snprintf: %m\n");
+			FCD_PERROR("snprintf");
 			fcd_sysfan_close_and_disable(fp, mon);
 		}
 
 		if (ret < (int)sizeof buf)
 			buf[ret] = ' ';
 
-		fcd_copy_buf(buf, mon);
+		fcd_copy_buf_and_alerts(mon, buf, warn, fail, NULL);
 
 	} while (fcd_sleep_and_check_exit(30) == 0);
 
 	if (fclose(fp) != 0)
-		FCD_ERR("fclose: %m\n");
+		FCD_PERROR("fclose");
 
 	pthread_exit(NULL);
 }

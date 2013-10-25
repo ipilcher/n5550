@@ -14,17 +14,19 @@
  *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-#include <pthread.h>
-#include <stdio.h>
+#include "freecusd.h"
+
 #include <string.h>
 
-#include "freecusd.h"
+/* Alert thresholds */
+static const double fcd_loadavg_warn = 12.0;
+static const double fcd_loadavg_fail = 16.0;
 
 __attribute__((noreturn))
 static void fcd_loadavg_close_and_disable(FILE *fp, struct fcd_monitor *mon)
 {
 	if (fclose(fp) != 0)
-		FCD_ERR("fclose: %m\n");
+		FCD_PERROR("fclose");
 	fcd_disable_monitor(mon);
 
 }
@@ -32,20 +34,21 @@ static void fcd_loadavg_close_and_disable(FILE *fp, struct fcd_monitor *mon)
 __attribute__((noreturn))
 static void *fcd_loadavg_fn(void *arg)
 {
+	static const char path[] = "/proc/loadavg";
 	struct fcd_monitor *mon = arg;
+	int warn, fail, ret;
 	double avgs[3];
 	char buf[21];
 	FILE *fp;
-	int ret;
 
-	fp = fopen("/proc/loadavg", "r");
+	fp = fopen(path, "re");
 	if (fp == NULL) {
-		FCD_ERR("fopen: %m\n");
+		FCD_PERROR(path);
 		fcd_disable_monitor(mon);
 	}
 
 	if (setvbuf(fp, NULL, _IONBF, 0) != 0) {
-		FCD_ERR("setvbuf: %m\n");
+		FCD_PERROR("setvbuf");
 		fcd_loadavg_close_and_disable(fp, mon);
 	}
 
@@ -55,7 +58,7 @@ static void *fcd_loadavg_fn(void *arg)
 
 		ret = fscanf(fp, "%lf %lf %lf", &avgs[0], &avgs[1], &avgs[2]);
 		if (ret == EOF) {
-			FCD_ERR("fscanf: %m\n");
+			FCD_PERROR("fscanf");
 			fcd_loadavg_close_and_disable(fp, mon);
 		}
 		else if (ret != 3) {
@@ -63,22 +66,25 @@ static void *fcd_loadavg_fn(void *arg)
 			fcd_loadavg_close_and_disable(fp, mon);
 		}
 
+		fail = (avgs[0] >= fcd_loadavg_fail);
+		warn = fail ? 0 : (avgs[0] >= fcd_loadavg_warn);
+
 		ret = snprintf(buf, sizeof buf, "%.2f %.2f %.2f",
 			       avgs[0], avgs[1], avgs[2]);
 		if (ret < 0) {
-			FCD_ERR("snprintf: %m\n");
+			FCD_PERROR("snprintf");
 			fcd_loadavg_close_and_disable(fp, mon);
 		}
 
 		if (ret < (int)sizeof buf)
 			buf[ret] = ' ';
 
-		fcd_copy_buf(buf, mon);
+		fcd_copy_buf_and_alerts(mon, buf, warn, fail, NULL);
 
 	} while (fcd_sleep_and_check_exit(30) == 0);
 
 	if (fclose(fp) != 0)
-		FCD_ERR("fclose: %m\n");
+		FCD_PERROR("fclose");
 
 	pthread_exit(NULL);
 }
