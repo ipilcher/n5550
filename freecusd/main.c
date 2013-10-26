@@ -85,7 +85,7 @@ static void fcd_main_enable_coredump(void)
 	}
 }
 
-static void fcd_parse_args(int argc, char *argv[])
+static void fcd_main_parse_args(int argc, char *argv[])
 {
 	int i;
 
@@ -93,7 +93,6 @@ static void fcd_parse_args(int argc, char *argv[])
 
 		if (strcmp("-f", argv[i]) == 0) {
 			fcd_foreground = 1;
-			fcd_main_enable_coredump();
 		}
 		else {
 			FCD_WARN("Unknown option: '%s'\n", argv[i]);
@@ -228,8 +227,16 @@ int main(int argc, char *argv[])
 	int tty_fd, ret;
 	size_t i;
 
-	openlog("freecusd", LOG_PID, LOG_DAEMON);
-	fcd_parse_args(argc, argv);
+	fcd_main_parse_args(argc, argv);
+	if (fcd_foreground) {
+		fcd_main_enable_coredump();
+	}
+	else {
+		openlog("freecusd", LOG_PID, LOG_DAEMON);
+		if (daemon(0, 0) == -1)
+			FCD_PABORT("daemon");
+	}
+
 	setlocale(LC_NUMERIC, "");
 
 	fcd_sigmask(&worker_sigmask, SIGINT, SIGTERM, SIGCHLD, SIGUSR1, 0);
