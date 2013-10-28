@@ -169,17 +169,20 @@ ssize_t fcd_lib_read(int fd, void *buf, size_t count, struct timespec *timeout)
 	return -3;
 }
 
-static int fcd_set_fd_flags(int fd, int get_cmd, int set_cmd, int flags)
+/*
+ * Sets the CLOEXEC flag on fd. Returns 0 on success, -1 on error.
+ */
+static int fcd_lib_set_fd_cloexec(int fd)
 {
 	int current_flags;
 
-	current_flags = fcntl(fd, get_cmd);
+	current_flags = fcntl(fd, F_GETFD);
 	if (current_flags == -1) {
 		FCD_PERROR("fcntl");
 		return -1;
 	}
 
-	if (fcntl(fd, set_cmd, current_flags | flags) == -1) {
+	if (fcntl(fd, F_SETFD, current_flags | FD_CLOEXEC) == -1) {
 		FCD_PERROR("fcntl");
 		return -1;
 	}
@@ -187,16 +190,6 @@ static int fcd_set_fd_flags(int fd, int get_cmd, int set_cmd, int flags)
 	return 0;
 }
 
-static int fcd_cmd_set_fd_cloexec(int fd)
-{
-	return fcd_set_fd_flags(fd, F_GETFD, F_SETFD, FD_CLOEXEC);
-}
-#if 0
-static int fcd_set_fd_nonblock(int fd)
-{
-	return fcd_set_fd_flags(fd, F_GETFL, F_SETFL, O_NONBLOCK);
-}
-#endif
 /*
  * Returns 0 on success, -1 on error, -4 if max buffer size would be exceeded
  */
@@ -392,10 +385,10 @@ static void fcd_cmd_child(int fd, char **cmd)
 
 	if (!fcd_foreground) {
 
-		if (fd == -1 && fcd_cmd_set_fd_cloexec(STDOUT_FILENO) == -1)
+		if (fd == -1 && fcd_lib_set_fd_cloexec(STDOUT_FILENO) == -1)
 			FCD_ABORT();
 
-		if (fcd_cmd_set_fd_cloexec(STDERR_FILENO) == -1)
+		if (fcd_lib_set_fd_cloexec(STDERR_FILENO) == -1)
 			FCD_ABORT();
 	}
 
