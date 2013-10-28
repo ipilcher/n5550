@@ -228,12 +228,14 @@ static int fcd_lib_grow_buf(char **buf, size_t *buf_size, size_t max_size)
 }
 
 /*
- * Returns # of bytes read, which may be 0 (-1 = error, -2 = timeout,
- * -3 = thread exit signal received, -4 = max buffer size would be exceeded).
- * Updates *timeout with remaining time.  (*timeout is undefined on error.)
+ * Reads from fd until EOF, timeout, interrupted by signal (SIGUSR1), max buffer
+ * size is exceeded or error occurs. Input buffer is grown as necessary. Updates
+ * *timeout with remaining time on successful return (>= 0). Returns # of bytes
+ * read, which may be 0 (-1 = error, -2 = timeout, -3 = interrupted by thread
+ * exit signal, -4 max buffer size would be exceeded).
  */
-ssize_t fcd_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
-		     struct timespec *timeout)
+ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
+			 struct timespec *timeout)
 {
 	size_t total;
 	ssize_t ret;
@@ -460,7 +462,7 @@ ssize_t fcd_cmd_output(int *status, char **cmd, char **buf, size_t *buf_size,
 	if (fd == -1)
 		return -1;
 
-	bytes_read = fcd_read_all(fd, buf, buf_size, max_size, timeout);
+	bytes_read = fcd_lib_read_all(fd, buf, buf_size, max_size, timeout);
 	if (bytes_read < 0) {
 		if (close(fd) == -1)
 			FCD_PERROR("close");

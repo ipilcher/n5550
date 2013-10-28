@@ -820,7 +820,8 @@ static ssize_t fcd_raid_read_file(int fd, char **buf, size_t *buf_size)
 	timeout.tv_sec = 0;
 	timeout.tv_nsec = 0;
 
-	ret = fcd_read_all(fd, buf, buf_size, FCD_RAID_FILE_BUF_SIZE, &timeout);
+	ret = fcd_lib_read_all(fd, buf, buf_size, FCD_RAID_FILE_BUF_SIZE,
+			       &timeout);
 	if (ret == -2) {
 		FCD_WARN("Read from regular file timed out\n");
 		return -1;

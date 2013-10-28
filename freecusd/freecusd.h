@@ -202,8 +202,8 @@ extern void fcd_copy_buf_and_alerts(struct fcd_monitor *mon, const char *buf,
 extern int fcd_lib_monitor_sleep(time_t seconds);
 extern ssize_t fcd_lib_read(int fd, void *buf, size_t count,
 			    struct timespec *timeout);
-extern ssize_t fcd_read_all(int fd, char **buf, size_t *buf_size,
-			    size_t max_size, struct timespec *timeout);
+extern ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size,
+				size_t max_size, struct timespec *timeout);
 extern ssize_t fcd_cmd_output(int *status, char **cmd, char **buf,
 			      size_t *buf_size, size_t max_size,
 			      struct timespec *timeout, const int *pipe_fds);
