@@ -82,7 +82,7 @@ static void *fcd_smart_fn(void *arg)
 			fcd_lib_disable_cmd_mon(mon, pipe_fds, NULL);
 
 		if (disks_changed == 0 && now - last < 1800)
-			continue;
+			goto continue_outer_loop;
 
 		last = now;
 
@@ -93,7 +93,7 @@ static void *fcd_smart_fn(void *arg)
 		{
 			if (disk_presence[i] == 0) {
 				memset(buf + i * 3, '-', 2);
-				continue;
+				continue;	/* inner loop */
 			}
 
 			status = fcd_smart_status(i, pipe_fds, mon);
