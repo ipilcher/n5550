@@ -228,12 +228,7 @@ static struct fcd_raid_array *fcd_raid_find_by_substr(const char *s, size_t len)
 
 	return NULL;
 }
-#if 0
-static struct fcd_raid_array *fcd_raid_find_by_name(const char *name)
-{
-	return fcd_raid_find_by_substr(name, strlen(name));
-}
-#endif
+
 static struct fcd_raid_array *fcd_raid_find_by_uuid(const uint32_t *uuid)
 {
 	struct fcd_raid_array *array;
@@ -804,15 +799,7 @@ regcomp_error:
 
 	return -1;
 }
-#if 0
-static const char *fcd_raid_format_uuid(const uint32_t *uuid, char *buf)
-{
-	sprintf(buf, "%08" PRIx32 ":%08" PRIx32 ":%08" PRIx32 ":%08" PRIx32,
-		uuid[3], uuid[2], uuid[1], uuid[0]);
 
-	return buf;
-}
-#endif
 static ssize_t fcd_raid_read_file(int fd, char **buf, size_t *buf_size)
 {
 	struct timespec timeout;
@@ -1063,124 +1050,3 @@ struct fcd_monitor fcd_raid_monitor = {
 			  "RAID STATUS         "
 			  "                    ",
 };
-
-#if 0
-#include <fcntl.h>
-
-static const char *format_raid_type(enum fcd_raid_type type)
-{
-	unsigned i;
-
-	for (i = 0; i < FCD_ARRAY_SIZE(fcd_raid_type_matches); ++i) {
-		if (fcd_raid_type_matches[i].type == type)
-			return fcd_raid_type_matches[i].match;
-	}
-
-	FCD_ABORT("Unknown RAID type\n");
-}
-
-static const struct {
-	enum fcd_raid_arr_stat status;
-	const char *name;
-} array_status_names[] = {
-	{ FCD_RAID_ARRAY_STOPPED,	"stopped" },
-	{ FCD_RAID_ARRAY_INACTIVE,	"inactive" },
-	{ FCD_RAID_ARRAY_ACTIVE,	"active" },
-	{ FCD_RAID_ARRAY_READONLY,	"read-only" },
-	{ FCD_RAID_ARRAY_DEGRADED,	"degraded" },
-	{ FCD_RAID_ARRAY_FAILED,	"failed" }
-};
-
-static const char *format_raid_status(enum fcd_raid_arr_stat status)
-{
-	unsigned i;
-
-	for (i = 0; i < FCD_ARRAY_SIZE(array_status_names); ++i) {
-		if (array_status_names[i].status == status)
-			return array_status_names[i].name;
-	}
-
-	FCD_ABORT("Unknown RAID status\n");
-}
-
-static const struct {
-	enum fcd_raid_dev_stat status;
-	const char *name;
-} dev_status_names[] = {
-	{ FCD_RAID_DEV_MISSING,		"missing" },
-	{ FCD_RAID_DEV_ACTIVE,		"active" },
-	{ FCD_RAID_DEV_FAILED,		"failed" },
-	{ FCD_RAID_DEV_SPARE,		"spare" },
-	{ FCD_RAID_DEV_WRITEMOSTLY,	"write-mostly" },
-	{ FCD_RAID_DEV_REPLACEMENT,	"replacement" }
-};
-
-static const char *format_dev_status(enum fcd_raid_dev_stat status)
-{
-	unsigned i;
-
-	for (i = 0; i < FCD_ARRAY_SIZE(dev_status_names); ++i) {
-		if (dev_status_names[i].status == status)
-			return dev_status_names[i].name;
-	}
-
-	FCD_ABORT("Unknown device status\n");
-}
-
-void fcd_raid_test(void)
-{
-	char uuid_buf[FCD_RAID_UUID_BUF_SIZE];
-	struct timespec timeout = { 0, 0 };
-	struct fcd_raid_array *array;
-	int fd, ret, pipe_fds[2];
-	size_t buf_size = 0;
-	char *buf = NULL;
-
-	fcd_foreground = 1;
-
-	if (pipe2(pipe_fds, O_CLOEXEC) == -1)
-		FCD_ABORT("pipe2: %m\n");
-
-	ret = fcd_raid_regcomp();
-	if (ret != 0)
-		FCD_ABORT("fcd_raid_regcomp returned %d\n", ret);
-
-	ret = fcd_raid_read_mdadm_conf();
-	if (ret != 0)
-		FCD_ABORT("fcd_raid_read_mdadm_conf returned %d\n", ret);
-
-	for (array = fcd_raid_list; array != NULL; array = array->next)
-		puts(fcd_raid_format_uuid(array->uuid, uuid_buf));
-
-	while (1) {
-
-		fd = open("/proc/mdstat", O_RDONLY | O_CLOEXEC);
-		if (fd == -1)
-			FCD_ABORT("/proc/mdstat: %m\n");
-
-		ret = fcd_read_all(fd, &buf, &buf_size, 32000, &timeout);
-		if (ret <= 0)
-			FCD_ABORT("fcd_read_all returned %d\n", ret);
-
-		close(fd);
-
-		ret = fcd_raid_parse_mdstat(buf, pipe_fds);
-		if (ret != 0)
-			FCD_ABORT("fcd_raid_parse_mdstat returned %d\n", ret);
-
-		for (array = fcd_raid_list; array != NULL;
-					    array = array->next) {
-			printf("%s%s:\t%s\t%s\t%d/%d\t%s\n", array->name,
-			       array->transient ? "(T)" : "",
-			       fcd_raid_format_uuid(array->uuid, uuid_buf),
-			       format_raid_status(array->array_status),
-			       array->current_devs, array->ideal_devs,
-			       format_raid_type(array->type));
-		}
-
-		puts("Hit Enter to continue");
-		getchar();
-
-	}
-}
-#endif

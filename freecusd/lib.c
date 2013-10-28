@@ -346,7 +346,7 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,int warn,
 
 /*
  * Updates an array of 5 elements, each of which indicates whether a disk drive
- * (sdb-sdf) is present (1) or absent (0).  Returns 1 if any of the 5 elements
+ * (sdb - sdf) is present (1) or absent (0).  Returns 1 if any of the 5 elements
  * were changed, 0 if there was no change, -1 on error.
  */
 int fcd_lib_disk_presence(int *presence)
@@ -548,42 +548,3 @@ int fcd_lib_cmd_status(char **cmd, struct timespec *timeout,
 
 	return WEXITSTATUS(status);
 }
-
-#if 0
-#include <stdlib.h>
-
-int fcd_foreground = 1;
-
-static void sigint_handler(int signum __attribute__((unused)))
-{
-	fcd_thread_exit_flag = 1;
-}
-
-int main(int argc __attribute__((unused)), char *argv[])
-{
-	struct timespec timeout;
-	struct sigaction act;
-	static char *buf;
-	size_t buf_size;
-	ssize_t ret;
-	int fd;
-
-	act.sa_handler = sigint_handler;
-	if (sigemptyset(&act.sa_mask)) abort();
-	act.sa_flags = 0;
-	if (sigaction(SIGINT, &act, NULL)) abort();
-
-	timeout.tv_sec = 10;
-	timeout.tv_nsec = 0;
-
-	if ((fd = open(argv[1], O_RDONLY | O_NONBLOCK)) == -1) abort();
-
-	buf = NULL;
-	buf_size = 0;
-	ret = fcd_read_all(fd, &buf, &buf_size, 32000, &timeout);
-
-	printf("fcd_read_all returned %zd\n", ret);
-
-	return 0;
-}
-#endif
