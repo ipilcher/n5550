@@ -93,7 +93,7 @@ int fcd_proc_wait(int *status, const int *pipe_fds, struct timespec *timeout)
 {
 	ssize_t ret;
 
-	ret = fcd_read(pipe_fds[0], status, sizeof *status, timeout);
+	ret = fcd_lib_read(pipe_fds[0], status, sizeof *status, timeout);
 	if (ret < 0)
 		return ret;
 

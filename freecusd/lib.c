@@ -114,11 +114,11 @@ static int fcd_lib_remaining(struct timespec *remaining,
 }
 
 /*
- * Returns # of bytes read (0 = EOF, -1 = error, -2 = timeout,
- * -3 = thread exit signal received).  Updates *timeout with remaining time.
- * (*timeout is undefined on error.)
+ * Acts as a wrapper around read(2) with a timeout. Updates *timeout with
+ * remaining time on successful return (>= 0). Returns # of bytes read (0 = EOF,
+ * -1 = error, -2 = timeout, -3 = thread exit signal received).
  */
-ssize_t fcd_read(int fd, void *buf, size_t count, struct timespec *timeout)
+ssize_t fcd_lib_read(int fd, void *buf, size_t count, struct timespec *timeout)
 {
 	struct timespec deadline;
 	struct pollfd pfd;
@@ -145,13 +145,13 @@ ssize_t fcd_read(int fd, void *buf, size_t count, struct timespec *timeout)
 
 		if (ret == 0)
 			return -2;
-#if 0
-		if ((pfd.revents & POLLIN) == 0) {
-			FCD_WARN("ppoll returned unexpected event(s): %#02hx\n",
-				 pfd.revents);
-			return -1;
-		}
-#endif
+
+		/*
+		 * Different file descriptors (regular files, pipes, sysfs/proc
+		 * files, etc.) behave so differently that it's impossible to
+		 * check revents in a meaningful way.
+		 */
+
 		ret = read(fd, buf, count);
 		if (ret == -1) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -253,7 +253,8 @@ ssize_t fcd_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
 				return ret;	/* -1 or -4 */
 		}
 
-		ret = fcd_read(fd, *buf + total, *buf_size - total, timeout);
+		ret = fcd_lib_read(fd, *buf + total, *buf_size - total,
+				   timeout);
 		if (ret < 0)
 			return ret;	/* -1, -2, or -3 */
 
