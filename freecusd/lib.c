@@ -419,8 +419,13 @@ static void fcd_lib_cmd_child(int fd, char **cmd)
 	FCD_PABORT("execv");
 }
 
-static int fcd_cmd_spawn(pid_t *child, char **cmd, const int *reaper_pipe,
-			 int create_output_pipe)
+/*
+ * Spawns child process, creating pipe to read child command's output if
+ * requested (create_output_pipe != 0).  On success, returns read fd of child
+ * output pipe (or 0 if create_output_pipe == 0); returns -1 on error.
+ */
+static int fcd_lib_cmd_spawn(pid_t *child, char **cmd, const int *reaper_pipe,
+			     int create_output_pipe)
 {
 	int output_pipe[2];
 
@@ -479,7 +484,7 @@ ssize_t fcd_cmd_output(int *status, char **cmd, char **buf, size_t *buf_size,
 	int ret, fd;
 	pid_t child;
 
-	fd = fcd_cmd_spawn(&child, cmd, pipe_fds, 1);
+	fd = fcd_lib_cmd_spawn(&child, cmd, pipe_fds, 1);
 	if (fd == -1)
 		return -1;
 
@@ -519,7 +524,7 @@ int fcd_cmd_status(char **cmd, struct timespec *timeout,
 	int status, ret;
 	pid_t child;
 
-	if (fcd_cmd_spawn(&child, cmd, pipe_fds, 0) == -1)
+	if (fcd_lib_cmd_spawn(&child, cmd, pipe_fds, 0) == -1)
 		return -1;
 
 	ret = fcd_proc_wait(&status, pipe_fds, timeout);
