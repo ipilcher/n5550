@@ -14,8 +14,6 @@
  *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-#define _GNU_SOURCE	/* for pipe2 and ppoll */
-
 #include "freecusd.h"
 
 #include <sys/wait.h>
@@ -25,7 +23,7 @@
 #include <time.h>
 #include <poll.h>
 
-#define FCD_BUF_CHUNK	2000
+#define FCD_LIB_BUF_CHUNK	2000
 
 sigset_t fcd_mon_ppoll_sigmask;
 
@@ -191,25 +189,28 @@ static int fcd_lib_set_fd_cloexec(int fd)
 }
 
 /*
- * Returns 0 on success, -1 on error, -4 if max buffer size would be exceeded
+ * Called as necessary to grow an input buffer. Returns 0 on success, -1 on
+ * error, -4 if max buffer size would be exceeded.
+ *
+ * NOTE: Buffer size is actually limited to the smallest multiple of
+ *	 FCD_LIB_BUF_CHUNK that is greater than or equal to max_size.
  */
-static int fcd_grow_buf(char **buf, size_t *buf_size, size_t max_size)
+static int fcd_lib_grow_buf(char **buf, size_t *buf_size, size_t max_size)
 {
 	size_t new_size;
 	char *new_buf;
 
 	if (*buf == NULL || *buf_size == 0)
-		new_size = FCD_BUF_CHUNK;
+		new_size = FCD_LIB_BUF_CHUNK;
 	else
-		new_size = *buf_size + FCD_BUF_CHUNK;
+		new_size = *buf_size + FCD_LIB_BUF_CHUNK;
 
 	/*
-	 * Ensure max_size is a multiple of FCD_BUF_CHUNK, rounding up if
+	 * Ensure max_size is a multiple of FCD_LIB_BUF_CHUNK, rounding up if
 	 * necessary
 	 */
-
-	max_size = ((max_size + FCD_BUF_CHUNK - 1) / FCD_BUF_CHUNK)
-							* FCD_BUF_CHUNK;
+	max_size = ((max_size + FCD_LIB_BUF_CHUNK - 1) / FCD_LIB_BUF_CHUNK)
+						* FCD_LIB_BUF_CHUNK;
 
 	if (new_size > max_size)
 		return -4;
@@ -241,7 +242,7 @@ ssize_t fcd_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
 
 	do {
 		if (total == *buf_size) {
-			ret = fcd_grow_buf(buf, buf_size, max_size);
+			ret = fcd_lib_grow_buf(buf, buf_size, max_size);
 			if (ret < 0)
 				return ret;	/* -1 or -4 */
 		}
