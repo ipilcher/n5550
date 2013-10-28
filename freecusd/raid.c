@@ -1043,7 +1043,11 @@ static void *fcd_raid_fn(void *arg)
 
 		fcd_copy_buf_and_alerts(mon, buf, warn, fail, disks);
 
-	} while (fcd_lib_monitor_sleep(30) == 0);
+		ret = fcd_lib_monitor_sleep(30);
+		if (ret == -1)
+			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
+
+	} while (ret == 0);
 
 	fcd_raid_cleanup(mdstat_buf, fd, pipe_fds);
 	pthread_exit(NULL);

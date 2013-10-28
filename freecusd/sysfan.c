@@ -82,7 +82,11 @@ static void *fcd_sysfan_fn(void *arg)
 
 		fcd_copy_buf_and_alerts(mon, buf, warn, fail, NULL);
 
-	} while (fcd_lib_monitor_sleep(30) == 0);
+		ret = fcd_lib_monitor_sleep(30);
+		if (ret == -1)
+			fcd_sysfan_close_and_disable(fp, mon);
+
+	} while (ret == 0);
 
 	if (fclose(fp) != 0)
 		FCD_PERROR("fclose");

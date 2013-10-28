@@ -117,9 +117,12 @@ static void *fcd_smart_fn(void *arg)
 		fcd_copy_buf_and_alerts(mon, buf, warn, 0, disk_alerts);
 
 continue_outer_loop:
-		;	/* C requires a statement after a label */
 
-	} while (fcd_lib_monitor_sleep(30) == 0);
+		i = fcd_lib_monitor_sleep(30);
+		if (i == -1)
+			fcd_disable_mon_cmd(mon, pipe_fds, NULL);
+
+	} while (i == 0);
 
 	fcd_proc_close_pipe(pipe_fds);
 	pthread_exit(NULL);

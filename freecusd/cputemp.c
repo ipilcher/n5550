@@ -102,7 +102,11 @@ static void *fcd_cputemp_fn(void *arg)
 
 		fcd_copy_buf_and_alerts(mon, buf, warn, fail, NULL);
 
-	} while (fcd_lib_monitor_sleep(30) == 0);
+		ret = fcd_lib_monitor_sleep(30);
+		if (ret == -1)
+			fcd_cputemp_close_and_disable(fps, mon);
+
+	} while (ret == 0);
 
 	for (i = 0; i < 2; ++i) {
 		if (fclose(fps[i]) == EOF)
