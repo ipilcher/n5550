@@ -212,7 +212,7 @@ extern int fcd_cmd_status(char **cmd, struct timespec *timeout,
 __attribute__((noreturn))
 extern void fcd_lib_disable_monitor(struct fcd_monitor *mon);
 __attribute__((noreturn))
-extern void fcd_lib_disable_mon_cmd(struct fcd_monitor *mon,
+extern void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon,
 				    const int *pipe_fds, char *buf);
 
 #endif	/* FREECUSD_H */

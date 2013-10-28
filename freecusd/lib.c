@@ -300,7 +300,7 @@ void fcd_lib_disable_monitor(struct fcd_monitor *mon)
  *
  * NOTE: buf may be NULL
  */
-void fcd_lib_disable_mon_cmd(struct fcd_monitor *mon, const int *pipe_fds,
+void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon, const int *pipe_fds,
 			     char *buf)
 {
 	free(buf);
