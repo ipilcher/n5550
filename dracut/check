@@ -1,0 +1,29 @@
+#!/bin/bash
+
+[ -e $srcmods/n5550/n5550_ahci_leds.ko -a -e $srcmods/n5550/n5550_board.ko ] && exit 0
+
+build_modules() {
+    /bin/cp /usr/src/n5550/modules/{Makefile,n5550_ahci_leds.c,n5550_board.c} .
+    local KERNEL=${srcmods#/lib/modules/}
+    KERNEL=${KERNEL%/}
+    /usr/bin/make KERNEL=$KERNEL || return 1
+    /bin/rm -rf $srcmods/n5550
+    /bin/mkdir $srcmods/n5550
+    /bin/cp n5550_ahci_leds.ko n5550_board.ko $srcmods/n5550/
+    /sbin/depmod $KERNEL
+    return 0
+}
+
+TMPDIR=`/bin/mktemp --directory --tmpdir=/var/tmp`
+pushd $TMPDIR
+
+if build_modules; then
+    popd
+    /bin/rm -rf $TMPDIR
+    exit 0
+else
+    echo "Failed to build n5550 kernel modules" >&2
+    popd
+    /bin/rm -rf $TMPDIR
+    exit 1
+fi

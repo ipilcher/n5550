@@ -1,0 +1,3 @@
+#!/bin/bash
+
+instmods n5550_ahci_leds
