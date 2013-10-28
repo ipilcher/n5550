@@ -343,13 +343,13 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,int warn,
 	if (ret != 0)
 		FCD_PT_ABRT("pthread_mutex_unlock", ret);
 }
-#if 0
-void fcd_copy_buf(const char *buf, struct fcd_monitor *mon)
-{
-	fcd_copy_buf_and_alerts(mon, buf, 0, 0, NULL);
-}
-#endif
-int fcd_update_disk_presence(int *presence)
+
+/*
+ * Updates an array of 5 elements, each of which indicates whether a disk drive
+ * (sdb-sdf) is present (1) or absent (0). Returns 1 if any of the 5 elements
+ * were changed, 0 if there was no change, -1 on error.
+ */
+int fcd_lib_disk_presence(int *presence)
 {
 	char dev[sizeof "/dev/sdX"];
 	int i, present, changed;

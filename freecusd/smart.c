@@ -77,7 +77,7 @@ static void *fcd_smart_fn(void *arg)
 		memset(buf, ' ', sizeof buf);
 		now = time(NULL);
 
-		disks_changed = fcd_update_disk_presence(disk_presence);
+		disks_changed = fcd_lib_disk_presence(disk_presence);
 		if (disks_changed == -1)
 			fcd_lib_disable_cmd_mon(mon, pipe_fds, NULL);
 

@@ -132,7 +132,7 @@ static void *fcd_hddtemp_fn(void *arg)
 		temps[0] = temps[1] = temps[2] = temps[3] = temps[4] = INT_MIN;
 		memset(buf, ' ', sizeof buf);
 
-		if (fcd_update_disk_presence(disk_presence) == -1)
+		if (fcd_lib_disk_presence(disk_presence) == -1)
 			fcd_lib_disable_cmd_mon(mon, pipe_fds, cmd_buf);
 
 		if (fcd_hddtemp_exec(&cmd_buf, &buf_size, pipe_fds, mon) == -3)
