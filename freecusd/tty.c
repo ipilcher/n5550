@@ -29,7 +29,7 @@ int fcd_tty_open(const char *tty)
 
 	fd = open(tty, O_RDWR | O_NOCTTY | O_CLOEXEC);
 	if (fd == -1)
-		FCD_PABORT(tty);
+		FCD_PFATAL(tty);
 
 	if (tcgetattr(fd, &tio) == -1) {
 		FCD_PERROR("tcgetattr");

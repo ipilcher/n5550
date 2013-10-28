@@ -107,7 +107,7 @@ static void fcd_alert_set(enum fcd_alert_msg *status)
 			return;
 	}
 
-	FCD_ABORT("Invalid alert status\n");
+	FCD_ABORT("Invalid enum value\n");
 }
 
 static void fcd_alert_clear(enum fcd_alert_msg *status)
@@ -144,7 +144,7 @@ static void fcd_alert_clear(enum fcd_alert_msg *status)
 			return;
 	}
 
-	FCD_ABORT("Invalid alert status\n");
+	FCD_ABORT("Invalid enum value\n");
 }
 
 void fcd_alert_update(enum fcd_alert_msg new, enum fcd_alert_msg *status)
@@ -239,7 +239,7 @@ void fcd_alert_leds_open(void)
 
 		fcd_alerts[i].led_fd = open(buf, O_WRONLY | O_CLOEXEC);
 		if (fcd_alerts[i].led_fd == -1)
-			FCD_PABORT(buf);
+			FCD_PFATAL(buf);
 
 		fcd_alert_led_off(&fcd_alerts[i]);
 	}

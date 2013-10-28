@@ -971,7 +971,7 @@ static void fcd_raid_result(int *ok, int *warn, int *fail, int *disks,
 						break;
 
 		default:
-			FCD_ABORT("Invalid array status\n");
+			FCD_ABORT("Invalid enum value\n");
 	}
 
 	if (array->array_status == FCD_RAID_ARRAY_STOPPED)
