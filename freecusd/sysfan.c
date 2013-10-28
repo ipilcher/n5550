@@ -30,7 +30,7 @@ static void fcd_sysfan_close_and_disable(FILE *fp, struct fcd_monitor *mon)
 {
 	if (fclose(fp) != 0)
 		FCD_PERROR("fclose");
-	fcd_disable_monitor(mon);
+	fcd_lib_disable_monitor(mon);
 
 }
 
@@ -45,7 +45,7 @@ static void *fcd_sysfan_fn(void *arg)
 	fp = fopen(fcd_sysfan_input, "re");
 	if (fp == NULL) {
 		FCD_PERROR("fopen");
-		fcd_disable_monitor(mon);
+		fcd_lib_disable_monitor(mon);
 	}
 
 	if (setvbuf(fp, NULL, _IONBF, 0) != 0) {

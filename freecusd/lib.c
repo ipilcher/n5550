@@ -268,7 +268,11 @@ ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
 	return total;
 }
 
-void fcd_disable_monitor(struct fcd_monitor *mon)
+/*
+ * Called by a monitor thread to disable itself when an error occurs. Never
+ * returns.
+ */
+void fcd_lib_disable_monitor(struct fcd_monitor *mon)
 {
 	static const char disabled_msg[20] = "ERROR: NOT AVAILABLE";
 	int ret;
@@ -294,7 +298,7 @@ void fcd_disable_mon_cmd(struct fcd_monitor *mon, const int *pipe_fds,
 {
 	free(buf);
 	fcd_proc_close_pipe(pipe_fds);
-	fcd_disable_monitor(mon);
+	fcd_lib_disable_monitor(mon);
 }
 
 void fcd_copy_buf_and_alerts(struct fcd_monitor *mon, const char *buf,

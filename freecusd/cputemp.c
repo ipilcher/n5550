@@ -37,7 +37,7 @@ static void fcd_cputemp_close_and_disable(FILE **fp, struct fcd_monitor *mon)
 			FCD_PERROR("fclose");
 	}
 
-	fcd_disable_monitor(mon);
+	fcd_lib_disable_monitor(mon);
 
 }
 
@@ -55,7 +55,7 @@ static void *fcd_cputemp_fn(void *arg)
 			FCD_PERROR(fcd_cputemp_input[i]);
 			if (i == 1 && fclose(fps[0]) == EOF)
 				FCD_PERROR("fclose");
-			fcd_disable_monitor(mon);
+			fcd_lib_disable_monitor(mon);
 		}
 	}
 

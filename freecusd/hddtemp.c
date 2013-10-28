@@ -112,7 +112,7 @@ static void *fcd_hddtemp_fn(void *arg)
 
 	if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
 		FCD_PERROR("pipe2");
-		fcd_disable_monitor(mon);
+		fcd_lib_disable_monitor(mon);
 	}
 
 	cmd_buf = NULL;

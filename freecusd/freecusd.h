@@ -210,7 +210,7 @@ extern ssize_t fcd_cmd_output(int *status, char **cmd, char **buf,
 extern int fcd_cmd_status(char **cmd, struct timespec *timeout,
 			  const int *pipe_fds);
 __attribute__((noreturn))
-extern void fcd_disable_monitor(struct fcd_monitor *mon);
+extern void fcd_lib_disable_monitor(struct fcd_monitor *mon);
 __attribute__((noreturn))
 extern void fcd_disable_mon_cmd(struct fcd_monitor *mon, const int *pipe_fds,
 				char *buf);

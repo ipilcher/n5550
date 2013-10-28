@@ -915,7 +915,7 @@ static void fcd_raid_disable(char *mdstat_buf, int mdstat_fd, int *pipe_fds,
 			     struct fcd_monitor *mon)
 {
 	fcd_raid_cleanup(mdstat_buf, mdstat_fd, pipe_fds);
-	fcd_disable_monitor(mon);
+	fcd_lib_disable_monitor(mon);
 }
 
 static int fcd_raid_setup(int *pipe_fds, int *mdstat_fd, char **mdstat_buf,

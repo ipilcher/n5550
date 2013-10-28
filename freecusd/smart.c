@@ -67,7 +67,7 @@ static void *fcd_smart_fn(void *arg)
 
 	if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
 		FCD_PERROR("pipe2");
-		fcd_disable_monitor(mon);
+		fcd_lib_disable_monitor(mon);
 	}
 
 	memset(disk_presence, 0, sizeof disk_presence);
