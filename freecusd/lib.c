@@ -37,7 +37,7 @@ sigset_t fcd_mon_ppoll_sigmask;
  * NOTE: Does not check fcd_thread_exit_flag before sleeping (assumes that
  * 	 SIGUSR1 has been blocked).
  */
-int fcd_sleep_and_check_exit(time_t seconds)
+int fcd_lib_monitor_sleep(time_t seconds)
 {
 	struct timespec ts;
 

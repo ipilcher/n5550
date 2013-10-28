@@ -199,7 +199,7 @@ extern int fcd_update_disk_presence(int *presence);
 extern void fcd_copy_buf(const char *buf, struct fcd_monitor *mon);
 extern void fcd_copy_buf_and_alerts(struct fcd_monitor *mon, const char *buf,
 				    int warn, int fail, const int *disks);
-extern int fcd_sleep_and_check_exit(time_t seconds);
+extern int fcd_lib_monitor_sleep(time_t seconds);
 extern ssize_t fcd_lib_read(int fd, void *buf, size_t count,
 			    struct timespec *timeout);
 extern ssize_t fcd_read_all(int fd, char **buf, size_t *buf_size,

@@ -119,7 +119,7 @@ static void *fcd_smart_fn(void *arg)
 continue_outer_loop:
 		;	/* C requires a statement after a label */
 
-	} while (fcd_sleep_and_check_exit(30) == 0);
+	} while (fcd_lib_monitor_sleep(30) == 0);
 
 	fcd_proc_close_pipe(pipe_fds);
 	pthread_exit(NULL);

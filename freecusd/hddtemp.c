@@ -167,7 +167,7 @@ static void *fcd_hddtemp_fn(void *arg)
 
 		fcd_copy_buf_and_alerts(mon, buf, warn, fail, disk_alerts);
 
-	} while (fcd_sleep_and_check_exit(30) == 0);
+	} while (fcd_lib_monitor_sleep(30) == 0);
 
 	free(cmd_buf);
 	fcd_proc_close_pipe(pipe_fds);
