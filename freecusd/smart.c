@@ -50,7 +50,7 @@ static int fcd_smart_status(int disk, const int *pipe_fds,
 	switch (status) {
 		case -3:	return -3;
 		case -2:	FCD_WARN("smartctl command timed out\n");
-		case -1:	fcd_disable_mon_cmd(mon, pipe_fds, NULL);
+		case -1:	fcd_lib_disable_mon_cmd(mon, pipe_fds, NULL);
 	}
 
 	return status;
@@ -79,7 +79,7 @@ static void *fcd_smart_fn(void *arg)
 
 		disks_changed = fcd_update_disk_presence(disk_presence);
 		if (disks_changed == -1)
-			fcd_disable_mon_cmd(mon, pipe_fds, NULL);
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, NULL);
 
 		if (disks_changed == 0 && now - last < 1800)
 			continue;
@@ -120,7 +120,7 @@ continue_outer_loop:
 
 		i = fcd_lib_monitor_sleep(30);
 		if (i == -1)
-			fcd_disable_mon_cmd(mon, pipe_fds, NULL);
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, NULL);
 
 	} while (i == 0);
 

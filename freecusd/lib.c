@@ -293,8 +293,15 @@ void fcd_lib_disable_monitor(struct fcd_monitor *mon)
 	pthread_exit(NULL);
 }
 
-void fcd_disable_mon_cmd(struct fcd_monitor *mon, const int *pipe_fds,
-			 char *buf)
+/*
+ * Called by a monitor thread to clean up child process communication resources
+ * (reaper thread pipe and buffer) and disabled itself when an error occurs.
+ * Never returns.
+ *
+ * NOTE: buf may be NULL
+ */
+void fcd_lib_disable_mon_cmd(struct fcd_monitor *mon, const int *pipe_fds,
+			     char *buf)
 {
 	free(buf);
 	fcd_proc_close_pipe(pipe_fds);

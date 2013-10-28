@@ -53,15 +53,23 @@ static int fcd_hddtemp_exec(char **cmd_buf, size_t *buf_size,
 			     FCD_HDDTEMP_BUF_MAX, &timeout, pipe_fds);
 
 	switch (ret) {
-		case -4:	fcd_disable_mon_cmd(mon, pipe_fds, *cmd_buf);
-		case -3:	return -3;
-		case -2:	FCD_WARN("hddtemp command timed out\n");
-		case -1:	fcd_disable_mon_cmd(mon, pipe_fds, *cmd_buf);
+
+		case -4:
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, *cmd_buf);
+
+		case -3:
+			return -3;
+
+		case -2:
+			FCD_WARN("hddtemp command timed out\n");
+
+		case -1:
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, *cmd_buf);
 	}
 
 	if (status != 0) {
 		FCD_WARN("Non-zero hddtemp exit status: %d\n", status);
-		fcd_disable_mon_cmd(mon, pipe_fds, *cmd_buf);
+		fcd_lib_disable_mon_cmd(mon, pipe_fds, *cmd_buf);
 	}
 
 	return 0;
@@ -88,12 +96,12 @@ static void fcd_hddtemp_parse(char *cmd_buf, int *temps, const int *pipe_fds,
 				FCD_WARN("Unexpected end of hddtemp output\n");
 			else
 				FCD_PERROR("sscanf");
-			fcd_disable_mon_cmd(mon, pipe_fds, cmd_buf);
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, cmd_buf);
 		}
 
 		if (ret != 2 || n == -1 || errno != 0 || c < 'b' || c > 'f') {
 			FCD_WARN("Error parsing hddtemp output\n");
-			fcd_disable_mon_cmd(mon, pipe_fds, cmd_buf);
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, cmd_buf);
 		}
 
 		temps[c - 'b'] = temp;
@@ -125,7 +133,7 @@ static void *fcd_hddtemp_fn(void *arg)
 		memset(buf, ' ', sizeof buf);
 
 		if (fcd_update_disk_presence(disk_presence) == -1)
-			fcd_disable_mon_cmd(mon, pipe_fds, cmd_buf);
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, cmd_buf);
 
 		if (fcd_hddtemp_exec(&cmd_buf, &buf_size, pipe_fds, mon) == -3)
 			continue;
@@ -146,8 +154,8 @@ static void *fcd_hddtemp_fn(void *arg)
 				ret = sprintf(b, "%d ", temps[i]);
 				if (ret == EOF) {
 					FCD_PERROR("sprintf");
-					fcd_disable_mon_cmd(mon, pipe_fds,
-							    cmd_buf);
+					fcd_lib_disable_mon_cmd(mon, pipe_fds,
+								cmd_buf);
 				}
 				b += ret;
 			}
@@ -169,7 +177,7 @@ static void *fcd_hddtemp_fn(void *arg)
 
 		ret = fcd_lib_monitor_sleep(30);
 		if (ret == -1)
-			fcd_disable_mon_cmd(mon, pipe_fds, cmd_buf);
+			fcd_lib_disable_mon_cmd(mon, pipe_fds, cmd_buf);
 
 	} while (ret == 0);
 
