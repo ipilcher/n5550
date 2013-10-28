@@ -472,13 +472,16 @@ static int fcd_lib_cmd_spawn(pid_t *child, char **cmd, const int *reaper_pipe,
 }
 
 /*
- * Returns # of bytes read, which may be 0 (-1 = error, -2 = timeout,
- * -3 = thread exit signal received, -4 = max buffer size would be exceeded).
- * Updates *timeout with remaining time.  (*timeout is undefined on error.)
+ * Executes an external program in a child process, reads its output into the
+ * buffer at buf (which is grown as necessary, up to max_size bytes), and
+ * stores its exit status (0 - 255) in *status.  Returns the number of bytes
+ * read (which may be 0), -1 on error, -2 if the timeout expires, -3 if the
+ * thread exit signal is received, or -4 if the maximum buffer size is exceeded.
+ * (If necessary, the child process is killed.)
  */
-ssize_t fcd_cmd_output(int *status, char **cmd, char **buf, size_t *buf_size,
-		       size_t max_size, struct timespec *timeout,
-		       const int *pipe_fds)
+ssize_t fcd_lib_cmd_output(int *status, char **cmd, char **buf,
+			   size_t *buf_size, size_t max_size,
+			   struct timespec *timeout, const int *pipe_fds)
 {
 	ssize_t bytes_read;
 	int ret, fd;
@@ -520,8 +523,8 @@ ssize_t fcd_cmd_output(int *status, char **cmd, char **buf, size_t *buf_size,
 
 /*
  * Executes an external program in a child process and returns its exit status
- * (0 - 255).  Returns -1 on error, -2 if timeout expires (in which case the
- * child process is killed), or -3 if the thread exit signal is received.
+ * (0 - 255).  Returns -1 on error, -2 if timeout expires, or -3 if the thread
+ * exit signal is received.  (If necessary, the child process is killed.)
  */
 int fcd_lib_cmd_status(char **cmd, struct timespec *timeout,
 		       const int *pipe_fds)

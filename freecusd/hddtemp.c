@@ -49,8 +49,8 @@ static int fcd_hddtemp_exec(char **cmd_buf, size_t *buf_size,
 	timeout.tv_sec = 5;
 	timeout.tv_nsec = 0;
 
-	ret = fcd_cmd_output(&status, fcd_hddtemp_cmd, cmd_buf, buf_size,
-			     FCD_HDDTEMP_BUF_MAX, &timeout, pipe_fds);
+	ret = fcd_lib_cmd_output(&status, fcd_hddtemp_cmd, cmd_buf, buf_size,
+				 FCD_HDDTEMP_BUF_MAX, &timeout, pipe_fds);
 
 	switch (ret) {
 

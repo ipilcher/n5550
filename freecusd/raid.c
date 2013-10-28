@@ -323,8 +323,9 @@ static int fcd_raid_get_uuid(uint32_t *uuid, const char *c,
 	timeout.tv_sec = 2;
 	timeout.tv_nsec = 0;
 
-	ret = fcd_cmd_output(&status, fcd_raid_mdadm_cmd, &fcd_raid_uuid_buf,
-			     &fcd_raid_uuid_buf_size, 1000, &timeout, pipe_fds);
+	ret = fcd_lib_cmd_output(&status, fcd_raid_mdadm_cmd,
+				 &fcd_raid_uuid_buf, &fcd_raid_uuid_buf_size,
+				 1000, &timeout, pipe_fds);
 	if (ret < 0) {
 		if (ret == -2)
 			FCD_WARN("mdadm command timed out\n");
