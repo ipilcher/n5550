@@ -29,7 +29,7 @@ sigset_t fcd_mon_ppoll_sigmask;
 
 /*
  * Sleeps for the specified number of seconds, unless interrupted by a signal
- * (SIGUSR1). Returns the thread-local value of fcd_thread_exit_flag (or -1 on
+ * (SIGUSR1).  Returns the thread-local value of fcd_thread_exit_flag (or -1 on
  * error).
  *
  * NOTE: Does not check fcd_thread_exit_flag before sleeping (assumes that
@@ -52,7 +52,7 @@ int fcd_lib_monitor_sleep(time_t seconds)
 }
 
 /*
- * Calculates *deadline, based on current time and timeout. Returns 0 on
+ * Calculates *deadline, based on current time and timeout.  Returns 0 on
  * success, -1 on error.
  */
 static int fcd_lib_deadline(struct timespec *deadline,
@@ -79,7 +79,7 @@ static int fcd_lib_deadline(struct timespec *deadline,
 
 /*
  * Calculates *remaining time, based on current time and deadline (but "rounds"
- * negative result up to zero). Returns 0 on success, -1 on error.
+ * negative result up to zero).  Returns 0 on success, -1 on error.
  */
 static int fcd_lib_remaining(struct timespec *remaining,
 			     const struct timespec *deadline)
@@ -112,9 +112,9 @@ static int fcd_lib_remaining(struct timespec *remaining,
 }
 
 /*
- * Acts as a wrapper around read(2) with a timeout. Updates *timeout with
- * remaining time on successful return (>= 0). Returns # of bytes read (0 = EOF,
- * -1 = error, -2 = timeout, -3 = thread exit signal received).
+ * Acts as a wrapper around read(2) with a timeout.  Updates *timeout with
+ * remaining time on successful return (>= 0).  Returns # of bytes read (0 =
+ * EOF, -1 = error, -2 = timeout, -3 = thread exit signal received).
  */
 ssize_t fcd_lib_read(int fd, void *buf, size_t count, struct timespec *timeout)
 {
@@ -168,7 +168,7 @@ ssize_t fcd_lib_read(int fd, void *buf, size_t count, struct timespec *timeout)
 }
 
 /*
- * Sets the CLOEXEC flag on fd. Returns 0 on success, -1 on error.
+ * Sets the CLOEXEC flag on fd.  Returns 0 on success, -1 on error.
  */
 static int fcd_lib_set_fd_cloexec(int fd)
 {
@@ -189,7 +189,7 @@ static int fcd_lib_set_fd_cloexec(int fd)
 }
 
 /*
- * Called as necessary to grow an input buffer. Returns 0 on success, -1 on
+ * Called as necessary to grow an input buffer.  Returns 0 on success, -1 on
  * error, -4 if max buffer size would be exceeded.
  *
  * NOTE: Buffer size is actually limited to the smallest multiple of
@@ -229,10 +229,10 @@ static int fcd_lib_grow_buf(char **buf, size_t *buf_size, size_t max_size)
 
 /*
  * Reads from fd until EOF, timeout, interrupted by signal (SIGUSR1), max buffer
- * size is exceeded or error occurs. Input buffer is grown as necessary. Updates
- * *timeout with remaining time on successful return (>= 0). Returns # of bytes
- * read, which may be 0 (-1 = error, -2 = timeout, -3 = interrupted by thread
- * exit signal, -4 max buffer size would be exceeded).
+ * size is exceeded or error occurs.  Input buffer is grown as necessary.
+ * Updates *timeout with remaining time on successful return (>= 0).  Returns #
+ * of bytes read, which may be 0 (-1 = error, -2 = timeout, -3 = interrupted by
+ * thread exit signal, -4 max buffer size would be exceeded).
  */
 ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
 			 struct timespec *timeout)
@@ -269,7 +269,7 @@ ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
 }
 
 /*
- * Called by a monitor thread to disable itself when an error occurs. Never
+ * Called by a monitor thread to disable itself when an error occurs.  Never
  * returns.
  */
 void fcd_lib_disable_monitor(struct fcd_monitor *mon)
@@ -346,7 +346,7 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,int warn,
 
 /*
  * Updates an array of 5 elements, each of which indicates whether a disk drive
- * (sdb-sdf) is present (1) or absent (0). Returns 1 if any of the 5 elements
+ * (sdb-sdf) is present (1) or absent (0).  Returns 1 if any of the 5 elements
  * were changed, 0 if there was no change, -1 on error.
  */
 int fcd_lib_disk_presence(int *presence)
