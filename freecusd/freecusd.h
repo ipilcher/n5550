@@ -17,7 +17,7 @@
 #ifndef FREECUSD_H
 #define FREECUSD_H
 
-#define _GNU_SOURCE	/* for ppoll, pipe2, etc. */
+#define _GNU_SOURCE	/* for ppoll, pipe2, vsyslog, etc. */
 
 #include <inttypes.h>
 #include <pthread.h>
@@ -35,9 +35,9 @@
 
 extern void fcd_err_msg(int priority, const char *format, ...);
 extern void fcd_err_perror(const char *msg, const char *file, int line,
-			   int fatal);
+			   int sev);
 extern void fcd_err_pt_err(const char *msg, int err, const char *file,
-			   int line, int fatal);
+			   int line, int sev);
 
 #define FCD_RAW_STRINGIFY(x)	#x
 #define FCD_STRINGIFY(x)	FCD_RAW_STRINGIFY(x)
@@ -60,6 +60,14 @@ extern void fcd_err_pt_err(const char *msg, int err, const char *file,
 					FCD_STRINGIFY(__LINE__) ": " \
 					__VA_ARGS__)
 
+#define FCD_FATAL(...)		do { \
+					fcd_err_msg(LOG_ERR, "FATAL: " \
+						__FILE__ ":" \
+						FCD_STRINGIFY(__LINE__) ": " \
+						__VA_ARGS__); \
+					exit(1); \
+				} while (0)
+
 #define FCD_ABORT(...)		do { \
 					fcd_err_msg(LOG_ERR, "FATAL: " \
 						__FILE__ ":" \
@@ -70,18 +78,30 @@ extern void fcd_err_pt_err(const char *msg, int err, const char *file,
 
 #define FCD_PERROR(msg)		fcd_err_perror((msg), __FILE__, __LINE__, 0)
 
-#define FCD_PABORT(msg)		do { \
+#define FCD_PFATAL(msg)		do { \
 					fcd_err_perror((msg), __FILE__, \
 						__LINE__, 1); \
+					exit(1); \
+				} while (0)
+
+#define FCD_PABORT(msg)		do { \
+					fcd_err_perror((msg), __FILE__, \
+						__LINE__, 2); \
 					abort(); \
 				} while (0)
 
 #define FCD_PT_ERR(msg, err)	fcd_err_pt_err((msg), (err), __FILE__, \
 					__LINE__, 0)
 
-#define FCD_PT_ABRT(msg, err)	do { \
+#define FCD_PT_FTL(msg, err)	do { \
 					fcd_err_pt_err((msg), (err), __FILE__, \
 						__LINE__, 1); \
+					exit(1); \
+				} while (0)
+
+#define FCD_PT_ABRT(msg, err)	do { \
+					fcd_err_pt_err((msg), (err), __FILE__, \
+						__LINE__, 2); \
 					abort(); \
 				} while (0)
 

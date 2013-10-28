@@ -14,13 +14,17 @@
  *   http://www.gnu.org/licenses/old-licenses/gpl-2.0.html
  */
 
-#define _BSD_SOURCE	/* for vsyslog */
-
 #include "freecusd.h"
 
 #include <syslog.h>
 #include <stdarg.h>
 #include <string.h>
+
+static const char *const fcd_err_severities[] = {
+	"ERROR",
+	"FATAL",
+	"ABORT",
+};
 
 void fcd_err_msg(int priority, const char *format, ...)
 {
@@ -36,15 +40,15 @@ void fcd_err_msg(int priority, const char *format, ...)
 	va_end(ap);
 }
 
-void fcd_err_perror(const char *msg, const char *file, int line, int fatal)
+void fcd_err_perror(const char *msg, const char *file, int line, int sev)
 {
-	fcd_err_msg(LOG_ERR, "%s: %s:%d: %s: %m\n", fatal ? "FATAL" : "ERROR",
+	fcd_err_msg(LOG_ERR, "%s: %s:%d: %s: %m\n", fcd_err_severities[sev],
 		    file, line, msg);
 }
 
 void fcd_err_pt_err(const char *msg, int err, const char *file, int line,
-		    int fatal)
+		    int sev)
 {
-	fcd_err_msg(LOG_ERR, "%s: %s:%d: %s: %s\n", fatal ? "FATAL" : "ERROR",
+	fcd_err_msg(LOG_ERR, "%s: %s:%d: %s: %s\n", fcd_err_severities[sev],
 		    file, line, msg, strerror(err));
 }
