@@ -380,8 +380,12 @@ int fcd_lib_disk_presence(int *presence)
 	return changed;
 }
 
+/*
+ * Called in child process to set up STDOUT/STDERR and exec external program.
+ * Never returns (aborts on error).
+ */
 __attribute__((noreturn))
-static void fcd_cmd_child(int fd, char **cmd)
+static void fcd_lib_cmd_child(int fd, char **cmd)
 {
 	/*
 	 * This flow is a bit ugly.  If we created an output pipe (fd != -1),
@@ -441,8 +445,10 @@ static int fcd_cmd_spawn(pid_t *child, char **cmd, const int *reaper_pipe,
 		return -1;
 	}
 
-	if (*child == 0)
-		fcd_cmd_child(create_output_pipe ? output_pipe[1] : -1, cmd);
+	if (*child == 0) {
+		fcd_lib_cmd_child(create_output_pipe ? output_pipe[1] : -1,
+				  cmd);
+	}
 
 	if (create_output_pipe)	{
 
