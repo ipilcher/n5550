@@ -29,17 +29,14 @@
 
 sigset_t fcd_mon_ppoll_sigmask;
 
-static int fcd_nanosleep_and_check_exit(const struct timespec *ts)
-{
-	if (ppoll(NULL, 0, ts, &fcd_mon_ppoll_sigmask) == -1
-						&& errno != EINTR) {
-		FCD_PERROR("ppoll");
-		return -1;
-	}
-
-	return fcd_thread_exit_flag;
-}
-
+/*
+ * Sleeps for the specified number of seconds, unless interrupted by a signal
+ * (SIGUSR1). Returns the thread-local value of fcd_thread_exit_flag (or -1 on
+ * error).
+ *
+ * NOTE: Does not check fcd_thread_exit_flag before sleeping (assumes that
+ * 	 SIGUSR1 has been blocked).
+ */
 int fcd_sleep_and_check_exit(time_t seconds)
 {
 	struct timespec ts;
@@ -47,7 +44,13 @@ int fcd_sleep_and_check_exit(time_t seconds)
 	ts.tv_sec = seconds;
 	ts.tv_nsec = 0;
 
-	return fcd_nanosleep_and_check_exit(&ts);
+	if (ppoll(NULL, 0, &ts, &fcd_mon_ppoll_sigmask) == -1
+						&& errno != EINTR) {
+		FCD_PERROR("ppoll");
+		return -1;
+	}
+
+	return fcd_thread_exit_flag;
 }
 
 static int fcd_read_deadline(struct timespec *deadline,
