@@ -24,7 +24,7 @@
 
 int fcd_foreground = 0;
 
-static struct fcd_monitor fcd_freecus_logo = {
+static struct fcd_monitor fcd_main_logo = {
 	.monitor_fn	= 0,
 	.buf		= "....."
 			  "FreeCUS             "
@@ -33,7 +33,7 @@ static struct fcd_monitor fcd_freecus_logo = {
 };
 
 static struct fcd_monitor *fcd_monitors[] = {
-	&fcd_freecus_logo,
+	&fcd_main_logo,
 	&fcd_loadavg_monitor,
 	&fcd_cputemp_monitor,
 	&fcd_sysfan_monitor,
@@ -42,7 +42,7 @@ static struct fcd_monitor *fcd_monitors[] = {
 	&fcd_raid_monitor,
 };
 
-static volatile sig_atomic_t fcd_got_exit_signal = 0;
+static volatile sig_atomic_t fcd_main_got_exit_signal = 0;
 
 /*
  * See https://sourceware.org/ml/libc-alpha/2012-06/msg00335.html for a
@@ -55,18 +55,18 @@ static const struct timespec fcd_main_sleep = {
 	.tv_nsec	= 0,
 };
 
-static void fcd_sig_handler(int signum)
+static void fcd_main_sig_handler(int signum)
 {
 	/*
 	 * Trigger a core dump with a second ctrl-C when running in foreground
 	 * mode.
 	 */
 
-	if (signum == SIGINT && fcd_got_exit_signal && fcd_foreground)
+	if (signum == SIGINT && fcd_main_got_exit_signal && fcd_foreground)
 		abort();
 
 	if (signum == SIGINT || signum == SIGTERM)
-		fcd_got_exit_signal = 1;
+		fcd_main_got_exit_signal = 1;
 
 	if (signum == SIGUSR1)
 		fcd_thread_exit_flag = 1;
@@ -100,7 +100,7 @@ static void fcd_main_parse_args(int argc, char *argv[])
 	}
 }
 
-static void fcd_start_monitor_threads(void)
+static void fcd_main_start_mon_threads(void)
 {
 	struct fcd_monitor *mon;
 	size_t i;
@@ -120,7 +120,7 @@ static void fcd_start_monitor_threads(void)
 	}
 }
 
-static void fcd_stop_thread(pthread_t thread)
+static void fcd_main_stop_thread(pthread_t thread)
 {
 	int ret;
 
@@ -135,18 +135,18 @@ static void fcd_stop_thread(pthread_t thread)
 	}
 }
 
-static void fcd_stop_monitor_threads(void)
+static void fcd_main_stop_mon_threads(void)
 {
 	size_t i;
 
 	for (i = 0; i < FCD_ARRAY_SIZE(fcd_monitors); ++i) {
 
 		if (fcd_monitors[i]->monitor_fn != 0)
-			fcd_stop_thread(fcd_monitors[i]->tid);
+			fcd_main_stop_thread(fcd_monitors[i]->tid);
 	}
 }
 
-static void fcd_sigmask(sigset_t *mask, ...)
+static void fcd_main_sigmask(sigset_t *mask, ...)
 {
 	va_list ap;
 	int i;
@@ -179,11 +179,11 @@ static void fcd_sigmask(sigset_t *mask, ...)
 	va_end(ap);
 }
 
-static void fcd_set_sig_handler(void)
+static void fcd_main_set_sig_handler(void)
 {
 	struct sigaction sa;
 
-	sa.sa_handler = fcd_sig_handler;
+	sa.sa_handler = fcd_main_sig_handler;
 	sa.sa_flags = 0;
 	if (sigemptyset(&sa.sa_mask) == -1)
 		FCD_PABORT("sigemptyset");
@@ -239,24 +239,24 @@ int main(int argc, char *argv[])
 
 	setlocale(LC_NUMERIC, "");
 
-	fcd_sigmask(&worker_sigmask, SIGINT, SIGTERM, SIGCHLD, SIGUSR1, 0);
-	fcd_sigmask(&main_sigmask, -SIGINT, -SIGTERM, SIGCHLD, SIGUSR1, 0);
-	fcd_sigmask(&fcd_mon_ppoll_sigmask,
-		    SIGINT, SIGTERM, SIGCHLD, -SIGUSR1, 0);
-	fcd_sigmask(&fcd_proc_ppoll_sigmask,
-		    SIGINT, SIGTERM, -SIGCHLD, -SIGUSR1, 0);
+	fcd_main_sigmask(&worker_sigmask, SIGINT, SIGTERM, SIGCHLD, SIGUSR1, 0);
+	fcd_main_sigmask(&main_sigmask, -SIGINT, -SIGTERM, SIGCHLD, SIGUSR1, 0);
+	fcd_main_sigmask(&fcd_mon_ppoll_sigmask,
+			 SIGINT, SIGTERM, SIGCHLD, -SIGUSR1, 0);
+	fcd_main_sigmask(&fcd_proc_ppoll_sigmask,
+			 SIGINT, SIGTERM, -SIGCHLD, -SIGUSR1, 0);
 
 	ret = pthread_sigmask(SIG_SETMASK, &worker_sigmask, NULL);
 	if (ret != 0)
 		FCD_PT_ABRT("pthread_sigmask", ret);
 
-	fcd_set_sig_handler();
+	fcd_main_set_sig_handler();
 
 	ret = pthread_create(&reaper_thread, NULL, fcd_proc_fn, NULL);
 	if (ret != 0)
 		FCD_PT_ABRT("pthread_create", ret);
 
-	fcd_start_monitor_threads();
+	fcd_main_start_mon_threads();
 
 	ret = pthread_sigmask(SIG_SETMASK, &main_sigmask, NULL);
 	if (ret != 0)
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
 	tty_fd = fcd_tty_open("/dev/ttyS0");
 	fcd_alert_leds_open();
 
-	while (!fcd_got_exit_signal) {
+	while (!fcd_main_got_exit_signal) {
 
 		for (i = 0; i < FCD_ARRAY_SIZE(fcd_monitors); ++i) {
 
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 			ret = nanosleep(&fcd_main_sleep, NULL);
 			if (ret == -1 && errno != EINTR)
 				FCD_PABORT("nanosleep");
-			if (fcd_got_exit_signal)
+			if (fcd_main_got_exit_signal)
 				break;
 		}
 	}
@@ -285,8 +285,8 @@ int main(int argc, char *argv[])
 	if (close(tty_fd) == -1)
 		FCD_PERROR("close");
 
-	fcd_stop_monitor_threads();
-	fcd_stop_thread(reaper_thread);
+	fcd_main_stop_mon_threads();
+	fcd_main_stop_thread(reaper_thread);
 
 	FCD_INFO("Exiting\n");
 	return 0;
