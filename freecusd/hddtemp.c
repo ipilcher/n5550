@@ -173,7 +173,7 @@ static void *fcd_hddtemp_fn(void *arg)
 		fail = (max >= fcd_hddtemp_fail);
 		warn = fail ? 0 : (max >= fcd_hddtemp_warn);
 
-		fcd_copy_buf_and_alerts(mon, buf, warn, fail, disk_alerts);
+		fcd_lib_set_mon_status(mon, buf, warn, fail, disk_alerts);
 
 		ret = fcd_lib_monitor_sleep(30);
 		if (ret == -1)

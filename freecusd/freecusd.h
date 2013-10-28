@@ -196,9 +196,8 @@ __attribute__((noreturn)) extern void *fcd_proc_fn(void *arg);
 
 /* Utility functions - lib.c */
 extern int fcd_update_disk_presence(int *presence);
-extern void fcd_copy_buf(const char *buf, struct fcd_monitor *mon);
-extern void fcd_copy_buf_and_alerts(struct fcd_monitor *mon, const char *buf,
-				    int warn, int fail, const int *disks);
+extern void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,
+				   int warn, int fail, const int *disks);
 extern int fcd_lib_monitor_sleep(time_t seconds);
 extern ssize_t fcd_lib_read(int fd, void *buf, size_t count,
 			    struct timespec *timeout);

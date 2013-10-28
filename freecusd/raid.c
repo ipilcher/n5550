@@ -1042,7 +1042,7 @@ static void *fcd_raid_fn(void *arg)
 		if (ret < (int)sizeof buf)
 			buf[ret] = ' ';
 
-		fcd_copy_buf_and_alerts(mon, buf, warn, fail, disks);
+		fcd_lib_set_mon_status(mon, buf, warn, fail, disks);
 
 		ret = fcd_lib_monitor_sleep(30);
 		if (ret == -1)

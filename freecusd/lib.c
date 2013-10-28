@@ -295,7 +295,7 @@ void fcd_lib_disable_monitor(struct fcd_monitor *mon)
 
 /*
  * Called by a monitor thread to clean up child process communication resources
- * (reaper thread pipe and buffer) and disabled itself when an error occurs.
+ * (reaper thread pipe and buffer) and disable itself when an error occurs.
  * Never returns.
  *
  * NOTE: buf may be NULL
@@ -308,8 +308,12 @@ void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon, const int *pipe_fds,
 	fcd_lib_disable_monitor(mon);
 }
 
-void fcd_copy_buf_and_alerts(struct fcd_monitor *mon, const char *buf,
-			     int warn, int fail, const int *disks)
+/*
+ * Called by monitor threads to update message buffer and alerts in monitor
+ * structure, where main thread will act upon them.
+ */
+void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,int warn,
+			    int fail, const int *disks)
 {
 	size_t i;
 	int ret;

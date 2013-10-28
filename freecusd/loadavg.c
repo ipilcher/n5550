@@ -79,7 +79,7 @@ static void *fcd_loadavg_fn(void *arg)
 		if (ret < (int)sizeof buf)
 			buf[ret] = ' ';
 
-		fcd_copy_buf_and_alerts(mon, buf, warn, fail, NULL);
+		fcd_lib_set_mon_status(mon, buf, warn, fail, NULL);
 
 		ret = fcd_lib_monitor_sleep(30);
 		if (ret == -1)

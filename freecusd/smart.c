@@ -114,7 +114,7 @@ static void *fcd_smart_fn(void *arg)
 
 		}
 
-		fcd_copy_buf_and_alerts(mon, buf, warn, 0, disk_alerts);
+		fcd_lib_set_mon_status(mon, buf, warn, 0, disk_alerts);
 
 continue_outer_loop:
 
