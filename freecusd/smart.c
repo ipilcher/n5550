@@ -45,7 +45,7 @@ static int fcd_smart_status(int disk, const int *pipe_fds,
 
 	fcd_smart_cmd_dev[7] = 'b' + disk;
 
-	status = fcd_cmd_status(fcd_smart_cmd, &timeout, pipe_fds);
+	status = fcd_lib_cmd_status(fcd_smart_cmd, &timeout, pipe_fds);
 
 	switch (status) {
 		case -3:	return -3;

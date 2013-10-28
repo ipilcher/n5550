@@ -89,6 +89,10 @@ unlock_mutex:
 	return child;
 }
 
+/*
+ * Returns 0 on success, -1 on error, -2 if timeout expires, or -3 if the
+ * thread exit signal is received.
+ */
 int fcd_proc_wait(int *status, const int *pipe_fds, struct timespec *timeout)
 {
 	ssize_t ret;

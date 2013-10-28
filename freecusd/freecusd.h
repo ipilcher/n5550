@@ -206,8 +206,8 @@ extern ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size,
 extern ssize_t fcd_cmd_output(int *status, char **cmd, char **buf,
 			      size_t *buf_size, size_t max_size,
 			      struct timespec *timeout, const int *pipe_fds);
-extern int fcd_cmd_status(char **cmd, struct timespec *timeout,
-			  const int *pipe_fds);
+extern int fcd_lib_cmd_status(char **cmd, struct timespec *timeout,
+			      const int *pipe_fds);
 __attribute__((noreturn))
 extern void fcd_lib_disable_monitor(struct fcd_monitor *mon);
 __attribute__((noreturn))

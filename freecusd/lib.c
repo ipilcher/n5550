@@ -518,8 +518,13 @@ ssize_t fcd_cmd_output(int *status, char **cmd, char **buf, size_t *buf_size,
 	return bytes_read;
 }
 
-int fcd_cmd_status(char **cmd, struct timespec *timeout,
-		   const int *pipe_fds)
+/*
+ * Executes an external program in a child process and returns its exit status
+ * (0 - 255).  Returns -1 on error, -2 if timeout expires (in which case the
+ * child process is killed), or -3 if the thread exit signal is received.
+ */
+int fcd_lib_cmd_status(char **cmd, struct timespec *timeout,
+		       const int *pipe_fds)
 {
 	int status, ret;
 	pid_t child;
