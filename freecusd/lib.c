@@ -53,8 +53,12 @@ int fcd_sleep_and_check_exit(time_t seconds)
 	return fcd_thread_exit_flag;
 }
 
-static int fcd_read_deadline(struct timespec *deadline,
-			     const struct timespec *timeout)
+/*
+ * Calculates *deadline, based on current time and timeout. Returns 0 on
+ * success, -1 on error.
+ */
+static int fcd_lib_deadline(struct timespec *deadline,
+			    const struct timespec *timeout)
 {
 	struct timespec now;
 
@@ -75,8 +79,12 @@ static int fcd_read_deadline(struct timespec *deadline,
 	return 0;
 }
 
-static int fcd_read_remaining(struct timespec *remaining,
-			      const struct timespec *deadline)
+/*
+ * Calculates *remaining time, based on current time and deadline (but "rounds"
+ * negative result up to zero). Returns 0 on success, -1 on error.
+ */
+static int fcd_lib_remaining(struct timespec *remaining,
+			     const struct timespec *deadline)
 {
 	struct timespec now;
 
@@ -116,7 +124,7 @@ ssize_t fcd_read(int fd, void *buf, size_t count, struct timespec *timeout)
 	struct pollfd pfd;
 	ssize_t ret;
 
-	if (fcd_read_deadline(&deadline, timeout) == -1)
+	if (fcd_lib_deadline(&deadline, timeout) == -1)
 		return -1;
 
 	pfd.fd = fd;
@@ -124,7 +132,7 @@ ssize_t fcd_read(int fd, void *buf, size_t count, struct timespec *timeout)
 
 	while (!fcd_thread_exit_flag)
 	{
-		if (fcd_read_remaining(timeout, &deadline) == -1)
+		if (fcd_lib_remaining(timeout, &deadline) == -1)
 			return -1;
 
 		ret = ppoll(&pfd, 1, timeout, &fcd_mon_ppoll_sigmask);
@@ -152,7 +160,7 @@ ssize_t fcd_read(int fd, void *buf, size_t count, struct timespec *timeout)
 			return -1;
 		}
 		else {
-			if (fcd_read_remaining(timeout, &deadline) == -1)
+			if (fcd_lib_remaining(timeout, &deadline) == -1)
 				return -1;
 			return ret;
 		}
