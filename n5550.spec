@@ -1,10 +1,10 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
 Version:	0.1.1
-Release:	1
+Release:	2
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
-Requires:	kernel-ml-devel gcc make
+Requires:	kernel-lt-devel gcc make
 BuildRequires:	gcc
 
 %description
@@ -60,6 +60,9 @@ rm -rf %{buildroot}
 %attr(0644,root,root) %doc LICENSE README
 
 %changelog
+* Tue Nov 05 2013 Ian Pilcher <arequipeno@gmail.com> - 0.1.1-2
+- Switch from kernel-ml to kernel-lt (now that kernel-lt is tracking 3.10.x)
+
 * Mon Oct 28 2013 Ian Pilcher <arequipeno@gmail.com> - 0.1.1-1
 - Version 0.1.1 fixes S.M.A.R.T. monitor not sleeping
 
