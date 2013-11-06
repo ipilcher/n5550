@@ -1,10 +1,11 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
 Version:	0.1.1
-Release:	2
+Release:	3%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
 Requires:	kernel-lt-devel gcc make
+Requires:	/sbin/mdadm /usr/sbin/hddtemp /usr/sbin/smartctl
 BuildRequires:	gcc
 
 %description
@@ -60,6 +61,10 @@ rm -rf %{buildroot}
 %attr(0644,root,root) %doc LICENSE README
 
 %changelog
+* Tue Nov 05 2013 Ian Pilcher <arequipeno@gmail.com> - 0.1.1-3
+- Add file dependencies for external commands called by freecusd
+- Add dist tag to release
+
 * Tue Nov 05 2013 Ian Pilcher <arequipeno@gmail.com> - 0.1.1-2
 - Switch from kernel-ml to kernel-lt (now that kernel-lt is tracking 3.10.x)
 
