@@ -23,7 +23,6 @@
 #include <linux/gpio.h>
 
 #define N5550_ICH_GPIO_BASE_DEFAULT	195
-#define N5550_PCA9532_I2C_BUS		5
 #define N5550_PCA9532_1_GPIO_BASE	16
 #define N5550_BOARD_ID			2
 
@@ -108,7 +107,8 @@ static void n5550_ich_gpio_led_cleanup(void)
 
 /* PCI ID of the ICH10R LPC controller */
 #define N5550_ICH_PCI_VENDOR		PCI_VENDOR_ID_INTEL
-#define N5550_ICH_PCI_DEVICE		0x3a16
+#define N5550_ICH_LPC_PCI_DEV		0x3a16
+#define N5550_ICH_I2C_PCI_DEV		0x3a30
 
 /* PCI configuration registers - from drivers/mfd/lpc_ich.c */
 #define N5550_ICH_PCI_GPIO_BASE        	0x48
@@ -136,7 +136,7 @@ static int __init n5550_ich_gpio_setup(void)
 	struct pci_dev *dev;
 	u32 gpio_io_base, gpio_pins;
 
-	dev = pci_get_device(N5550_ICH_PCI_VENDOR, N5550_ICH_PCI_DEVICE, NULL);
+	dev = pci_get_device(N5550_ICH_PCI_VENDOR, N5550_ICH_LPC_PCI_DEV, NULL);
 	if (dev == NULL)
 		return -ENODEV;
 
@@ -336,26 +336,40 @@ static struct i2c_client *n5550_pca9532_0_client, *n5550_pca9532_1_client;
 static int __init n5550_pca9532_setup(void)
 {
 	struct i2c_adapter *adapter;
+	struct pci_dev *dev;
 
-	adapter = i2c_get_adapter(N5550_PCA9532_I2C_BUS);
+	dev = pci_get_device(N5550_ICH_PCI_VENDOR, N5550_ICH_I2C_PCI_DEV, NULL);
+	if (dev == NULL)
+	    return -ENODEV;
+
+	adapter = pci_get_drvdata(dev);
 	if (adapter == NULL) {
-		return -ENOMEM;
+		pci_dev_put(dev);
+		return -ENODEV;
+	}
+
+	if (!try_module_get(adapter->owner)) {
+		pci_dev_put(dev);
+		return -EBUSY;
 	}
 
 	n5550_pca9532_0_client = i2c_new_device(adapter, &n5550_pca9532_0_info);
 	if (n5550_pca9532_0_client == NULL) {
-		i2c_put_adapter(adapter);
-		return -ENOMEM;
+		module_put(adapter->owner);
+		pci_dev_put(dev);
+		return -ENODEV;
 	}
 
 	n5550_pca9532_1_client = i2c_new_device(adapter, &n5550_pca9532_1_info);
 	if (n5550_pca9532_1_client == NULL) {
 		i2c_unregister_device(n5550_pca9532_0_client);
-		i2c_put_adapter(adapter);
-		return -ENOMEM;
+		module_put(adapter->owner);
+		pci_dev_put(dev);
+		return -ENODEV;
 	}
 
-	i2c_put_adapter(adapter);
+	module_put(adapter->owner);
+	pci_dev_put(dev);
 	return 0;
 }
 
