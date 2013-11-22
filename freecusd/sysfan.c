@@ -44,7 +44,7 @@ static void *fcd_sysfan_fn(void *arg)
 
 	fp = fopen(fcd_sysfan_input, "re");
 	if (fp == NULL) {
-		FCD_PERROR("fopen");
+		FCD_PERROR(fcd_sysfan_input);
 		fcd_lib_disable_monitor(mon);
 	}
 
