@@ -20,6 +20,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+int fcd_err_foreground = 0;
+
 static const char *const fcd_err_severities[] = {
 	"ERROR",
 	"FATAL",
@@ -32,7 +34,7 @@ void fcd_err_msg(int priority, const char *format, ...)
 
 	va_start(ap, format);
 
-	if (fcd_foreground)
+	if (fcd_err_foreground)
 		vfprintf(stderr, format, ap);
 	else
 		vsyslog(priority, format, ap);

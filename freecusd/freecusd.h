@@ -148,7 +148,7 @@ struct fcd_monitor {
  */
 
 /* Detach from terminal?  Log to syslog or stderr? */
-extern int fcd_foreground;
+extern int fcd_err_foreground;
 
 /* Set by SIGUSR1 handler in monitor/worker threads */
 extern __thread volatile sig_atomic_t fcd_thread_exit_flag;

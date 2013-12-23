@@ -22,8 +22,6 @@
 #include <string.h>
 #include <errno.h>
 
-int fcd_foreground = 0;
-
 static struct fcd_monitor fcd_main_logo = {
 	.monitor_fn	= 0,
 	.buf		= "....."
@@ -62,7 +60,7 @@ static void fcd_main_sig_handler(int signum)
 	 * mode.
 	 */
 
-	if (signum == SIGINT && fcd_main_got_exit_signal && fcd_foreground)
+	if (signum == SIGINT && fcd_main_got_exit_signal && fcd_err_foreground)
 		abort();
 
 	if (signum == SIGINT || signum == SIGTERM)
@@ -92,7 +90,7 @@ static void fcd_main_parse_args(int argc, char *argv[])
 	for (i = 1; i < argc; ++i) {
 
 		if (strcmp("-f", argv[i]) == 0) {
-			fcd_foreground = 1;
+			fcd_err_foreground = 1;
 		}
 		else {
 			FCD_WARN("Unknown option: '%s'\n", argv[i]);
@@ -228,7 +226,7 @@ int main(int argc, char *argv[])
 	size_t i;
 
 	fcd_main_parse_args(argc, argv);
-	if (fcd_foreground) {
+	if (fcd_err_foreground) {
 		fcd_main_enable_coredump();
 	}
 	else {

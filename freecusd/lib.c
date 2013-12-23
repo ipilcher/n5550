@@ -405,7 +405,7 @@ static void fcd_lib_cmd_child(int fd, char **cmd)
 			FCD_PABORT("dup2");
 	}
 
-	if (!fcd_foreground) {
+	if (!fcd_err_foreground) {
 
 		if (fd == -1 && fcd_lib_set_fd_cloexec(STDOUT_FILENO) == -1)
 			FCD_ABORT();
