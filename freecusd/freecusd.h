@@ -166,6 +166,7 @@ extern struct fcd_monitor fcd_sysfan_monitor;
 extern struct fcd_monitor fcd_hddtemp_monitor;
 extern struct fcd_monitor fcd_smart_monitor;
 extern struct fcd_monitor fcd_raid_monitor;
+extern struct fcd_monitor *fcd_monitors[];
 
 /*
  * Non-static functions

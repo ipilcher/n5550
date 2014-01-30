@@ -30,7 +30,7 @@ static struct fcd_monitor fcd_main_logo = {
 			  "Free Your NAS!      ",
 };
 
-static struct fcd_monitor *fcd_monitors[] = {
+struct fcd_monitor *fcd_monitors[] = {
 	&fcd_main_logo,
 	&fcd_loadavg_monitor,
 	&fcd_cputemp_monitor,
