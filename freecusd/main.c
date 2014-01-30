@@ -38,6 +38,7 @@ static struct fcd_monitor *fcd_monitors[] = {
 	&fcd_hddtemp_monitor,
 	&fcd_smart_monitor,
 	&fcd_raid_monitor,
+	NULL
 };
 
 static volatile sig_atomic_t fcd_main_got_exit_signal = 0;
@@ -100,13 +101,10 @@ static void fcd_main_parse_args(int argc, char *argv[])
 
 static void fcd_main_start_mon_threads(void)
 {
-	struct fcd_monitor *mon;
-	size_t i;
+	struct fcd_monitor *mon, **m;
 	int ret;
 
-	for (i = 0; i < FCD_ARRAY_SIZE(fcd_monitors); ++i) {
-
-		mon = fcd_monitors[i];
+	for (m = fcd_monitors; mon = *m, mon != NULL; ++m) {
 
 		if (mon->monitor_fn != 0) {
 
@@ -135,12 +133,12 @@ static void fcd_main_stop_thread(pthread_t thread)
 
 static void fcd_main_stop_mon_threads(void)
 {
-	size_t i;
+	struct fcd_monitor **mon;
 
-	for (i = 0; i < FCD_ARRAY_SIZE(fcd_monitors); ++i) {
+	for (mon = fcd_monitors; *mon != NULL; ++mon) {
 
-		if (fcd_monitors[i]->monitor_fn != 0)
-			fcd_main_stop_thread(fcd_monitors[i]->tid);
+		if ((*mon)->monitor_fn != 0)
+			fcd_main_stop_thread((*mon)->tid);
 	}
 }
 
@@ -221,9 +219,9 @@ static void fcd_main_read_monitor(int tty_fd, struct fcd_monitor *mon)
 int main(int argc, char *argv[])
 {
 	sigset_t worker_sigmask, main_sigmask;
+	struct fcd_monitor **mon;
 	pthread_t reaper_thread;
 	int tty_fd, ret;
-	size_t i;
 
 	fcd_main_parse_args(argc, argv);
 	if (fcd_err_foreground) {
@@ -267,9 +265,9 @@ int main(int argc, char *argv[])
 
 	while (!fcd_main_got_exit_signal) {
 
-		for (i = 0; i < FCD_ARRAY_SIZE(fcd_monitors); ++i) {
+		for (mon = fcd_monitors; *mon != NULL; ++mon) {
 
-			fcd_main_read_monitor(tty_fd, fcd_monitors[i]);
+			fcd_main_read_monitor(tty_fd, *mon);
 
 			ret = nanosleep(&fcd_main_sleep, NULL);
 			if (ret == -1 && errno != EINTR)
