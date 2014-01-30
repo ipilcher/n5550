@@ -27,6 +27,8 @@
 #include <signal.h>
 #include <stdio.h>
 
+#include <libcip.h>
+
 /*
  * Error reporting stuff
  */
@@ -136,6 +138,8 @@ struct fcd_monitor {
 	pthread_mutex_t mutex;
 	const char *name;
 	void *(*monitor_fn)(void *);
+	int (*conf_init_fn)(cip_err_ctx *, cip_sect_schema *,
+			    cip_sect_schema *);
 	pthread_t tid;
 	enum fcd_alert_msg sys_warn;
 	enum fcd_alert_msg sys_fail;
