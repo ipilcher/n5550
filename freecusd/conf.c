@@ -154,6 +154,41 @@ static int fcd_conf_warn(const char *msg)
 	return 0;
 }
 
+static int fcd_conf_per_mon(cip_err_ctx *ctx, struct fcd_monitor *mon,
+			    cip_sect_schema *freecusd_schema,
+			    cip_sect_schema *raiddisk_schema)
+{
+	int ret;
+
+	if (mon->enabled_opt_name != NULL) {
+
+		ret = cip_opt_schema_new1(ctx, freecusd_schema,
+					  mon->enabled_opt_name,
+					  CIP_OPT_TYPE_BOOL,
+					  fcd_conf_mon_enable_cb, mon, 0, NULL);
+		if (ret == -1)
+			return -1;
+	}
+
+	if (mon->freecusd_opts != NULL) {
+
+		ret = cip_opt_schema_new3(ctx, freecusd_schema,
+					  mon->freecusd_opts);
+		if (ret == -1)
+			return -1;
+	}
+
+	if (mon->raiddisk_opts != NULL) {
+
+		ret = cip_opt_schema_new3(ctx, raiddisk_schema,
+					  mon->raiddisk_opts);
+		if (ret == -1)
+			return -1;
+	}
+
+	return 0;
+}
+
 void fcd_conf_parse(void)
 {
 	cip_sect_schema *freecusd_schema, *raiddisk_schema;
@@ -183,29 +218,10 @@ void fcd_conf_parse(void)
 
 	for (mon = fcd_monitors; *mon != NULL; ++mon) {
 
-		if ((*mon)->enabled_opt_name != NULL) {
-			ret = cip_opt_schema_new1(&ctx, freecusd_schema,
-						  (*mon)->enabled_opt_name,
-						  CIP_OPT_TYPE_BOOL,
-						  fcd_conf_mon_enable_cb,
-						  *mon, 0, NULL);
-			if (ret == -1)
-				FCD_FATAL("%s\n", cip_last_err(&ctx));
-		}
-
-		if ((*mon)->freecusd_opts != NULL) {
-			ret = cip_opt_schema_new3(&ctx, freecusd_schema,
-						  (*mon)->freecusd_opts);
-			if (ret == -1)
-				FCD_FATAL("%s\n", cip_last_err(&ctx));
-		}
-
-		if ((*mon)->raiddisk_opts != NULL) {
-			ret = cip_opt_schema_new3(&ctx, raiddisk_schema,
-						  (*mon)->raiddisk_opts);
-			if (ret == -1)
-				FCD_FATAL("%s\n", cip_last_err(&ctx));
-		}
+		ret = fcd_conf_per_mon(&ctx, *mon, freecusd_schema,
+				       raiddisk_schema);
+		if (ret == -1)
+			FCD_FATAL("%s\n", cip_last_err(&ctx));
 	}
 
 	cfg_file_name = (fcd_conf_file_name != NULL) ? fcd_conf_file_name :
