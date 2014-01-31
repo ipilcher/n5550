@@ -146,6 +146,65 @@ int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
 }
 
 /*
+ * Finds the RAID disk index corresponding to a [raid_disk:*] instance
+ */
+int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
+		      const cip_ini_sect *sect)
+{
+	static const cip_ini_sect *current_sect = NULL;
+	static unsigned current_index;
+
+	unsigned i;
+
+	if (fcd_conf_disk_count == 0)
+		return 1;		/* Defer until [freecusd] processed */
+
+	if (sect == current_sect) {
+		*index = current_index;
+		return 0;
+	}
+
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
+
+		if (strcmp(sect->node.name, fcd_conf_disk_names[i]) == 0) {
+			current_sect = sect;
+			current_index = i;
+			*index = i;
+			return 0;
+		}
+	}
+
+	cip_err(ctx, "Disk (%s) is not a member of raid_disks",
+		sect->node.name);
+	return -1;
+}
+
+/*
+ * Post-parse callback for disk-specific booleans
+ */
+int fcd_conf_disk_bool_cb(cip_err_ctx *ctx __attribute__((unused)),
+			  const cip_ini_value *value, const cip_ini_sect *sect,
+			  const cip_ini_file *file __attribute__((unused)),
+			  void *post_parse_data)
+{
+	bool b, *p;
+	unsigned i;
+	int ret;
+
+	ret = fcd_conf_disk_idx(ctx, &i, sect);
+	if (ret != 0)
+		return ret;
+
+	p = (bool *)(value->value);
+	b = *p;
+
+	p = post_parse_data;
+	p[i] = b;
+
+	return 0;
+}
+
+/*
  * Parse the configuration file
  */
 static int fcd_conf_warn(const char *msg)
