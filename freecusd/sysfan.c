@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
