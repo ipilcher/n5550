@@ -24,6 +24,7 @@
 
 static struct fcd_monitor fcd_main_logo = {
 	.monitor_fn	= 0,
+	.enabled	= true,
 	.buf		= "....."
 			  "FreeCUS             "
 			  "                    "
@@ -115,7 +116,7 @@ static void fcd_main_start_mon_threads(void)
 
 	for (m = fcd_monitors; mon = *m, mon != NULL; ++m) {
 
-		if (mon->monitor_fn != 0) {
+		if (mon->monitor_fn != 0 && mon->enabled) {
 
 			ret = pthread_create(&mon->tid, NULL,
 					     mon->monitor_fn, mon);
@@ -146,7 +147,7 @@ static void fcd_main_stop_mon_threads(void)
 
 	for (mon = fcd_monitors; *mon != NULL; ++mon) {
 
-		if ((*mon)->monitor_fn != 0)
+		if ((*mon)->monitor_fn != 0 && (*mon)->enabled)
 			fcd_main_stop_thread((*mon)->tid);
 	}
 }
@@ -207,21 +208,24 @@ static void fcd_main_read_monitor(int tty_fd, struct fcd_monitor *mon)
 {
 	int ret;
 
-	if (mon->monitor_fn != 0) {
-		ret = pthread_mutex_lock(&mon->mutex);
-		if (ret != 0)
-			FCD_PT_ABRT("pthread_mutex_lock", ret);
-	}
+	if (mon->enabled) {
 
-	fcd_tty_write_msg(tty_fd, mon);
+		if (mon->monitor_fn != 0) {
+			ret = pthread_mutex_lock(&mon->mutex);
+			if (ret != 0)
+				FCD_PT_ABRT("pthread_mutex_lock", ret);
+		}
 
-	if (mon->monitor_fn != 0) {
+		fcd_tty_write_msg(tty_fd, mon);
 
-		fcd_alert_read_monitor(mon);
+		if (mon->monitor_fn != 0) {
 
-		ret = pthread_mutex_unlock(&mon->mutex);
-		if (ret != 0)
-			FCD_PT_ABRT("pthread_mutex_unlock", ret);
+			fcd_alert_read_monitor(mon);
+
+			ret = pthread_mutex_unlock(&mon->mutex);
+			if (ret != 0)
+				FCD_PT_ABRT("pthread_mutex_unlock", ret);
+		}
 	}
 }
 

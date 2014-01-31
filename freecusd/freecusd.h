@@ -141,7 +141,7 @@ enum fcd_alert_msg {
 struct fcd_monitor {
 	pthread_mutex_t mutex;
 	const char *name;
-	const char *enabled_opt_name;
+	char *enabled_opt_name;
 	const cip_opt_info *freecusd_opts;
 	const cip_opt_info *raiddisk_opts;
 	void *(*monitor_fn)(void *);

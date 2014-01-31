@@ -122,6 +122,30 @@ static int fcd_conf_raiddisks_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 }
 
 /*
+ * Post-parse callback for monitor enable/disable booleans
+ */
+int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
+			   const cip_ini_value *value,
+			   const cip_ini_sect *sect __attribute__((unused)),
+			   const cip_ini_file *file __attribute__((unused)),
+			   void *post_parse_data)
+{
+	struct fcd_monitor *mon;
+	const bool *b;
+
+	mon = (struct fcd_monitor *)post_parse_data;
+	b = (const bool *)(value->value);
+
+	mon->enabled = *b;
+	if (!mon->enabled) {
+		FCD_INFO("%s monitor disabled by configuration setting\n",
+			 mon->name);
+	}
+
+	return 0;
+}
+
+/*
  * Parse the configuration file
  */
 static int fcd_conf_warn(const char *msg)
@@ -158,6 +182,16 @@ void fcd_conf_parse(void)
 		FCD_FATAL("%s\n", cip_last_err(&ctx));
 
 	for (mon = fcd_monitors; *mon != NULL; ++mon) {
+
+		if ((*mon)->enabled_opt_name != NULL) {
+			ret = cip_opt_schema_new1(&ctx, freecusd_schema,
+						  (*mon)->enabled_opt_name,
+						  CIP_OPT_TYPE_BOOL,
+						  fcd_conf_mon_enable_cb,
+						  *mon, 0, NULL);
+			if (ret == -1)
+				FCD_FATAL("%s\n", cip_last_err(&ctx));
+		}
 
 		if ((*mon)->freecusd_opts != NULL) {
 			ret = cip_opt_schema_new3(&ctx, freecusd_schema,
