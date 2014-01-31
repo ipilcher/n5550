@@ -20,18 +20,15 @@
 #include <fcntl.h>
 #include <time.h>
 
-/* Defining this as an array rather than a pointer makes it modifiable */
-static char fcd_smart_cmd_dev[] = "/dev/sdX";
-
 static char *fcd_smart_cmd[] = {
-	"/usr/sbin/smartctl",
-	"smartctl",
-	"--device=sat",
-	"--nocheck=standby",
-	"--quietmode=silent",
-	"--health",
-	fcd_smart_cmd_dev,
-	NULL
+	[0] = "/usr/sbin/smartctl",
+	[1] = "smartctl",
+	[2] = "--device=sat",
+	[3] = "--nocheck=standby",
+	[4] = "--quietmode=silent",
+	[5] = "--health",
+	[6] = NULL,		/* disk goes here */
+	[7] = NULL
 };
 
 static int fcd_smart_status(int disk, const int *pipe_fds,
@@ -43,7 +40,7 @@ static int fcd_smart_status(int disk, const int *pipe_fds,
 	timeout.tv_sec = 2;
 	timeout.tv_nsec = 0;
 
-	fcd_smart_cmd_dev[7] = 'b' + disk;
+	fcd_smart_cmd[6] = fcd_conf_disk_names[disk];
 
 	status = fcd_lib_cmd_status(fcd_smart_cmd, &timeout, pipe_fds);
 
@@ -74,7 +71,7 @@ static void *fcd_smart_fn(void *arg)
 		memset(disk_alerts, 0, sizeof disk_alerts);
 		warn = 0;
 
-		for (i = 0; i < 5; ++i)
+		for (i = 0; i < (int)fcd_conf_disk_count; ++i)
 		{
 			if (0) {
 				memset(buf + i * 3, '-', 2);
