@@ -19,8 +19,8 @@
 #include <string.h>
 
 /* Alert thresholds */
-static const double fcd_loadavg_warn = 12.0;
-static const double fcd_loadavg_fail = 16.0;
+static double fcd_loadavg_warn[3] = { 12.0, 12.0, 12.0 };
+static double fcd_loadavg_crit[3] = { 16.0, 16.0, 16.0 };
 
 __attribute__((noreturn))
 static void fcd_loadavg_close_and_disable(FILE *fp, struct fcd_monitor *mon)
@@ -39,6 +39,7 @@ static void *fcd_loadavg_fn(void *arg)
 	int warn, fail, ret;
 	double avgs[3];
 	char buf[21];
+	unsigned i;
 	FILE *fp;
 
 	fp = fopen(path, "re");
@@ -66,8 +67,17 @@ static void *fcd_loadavg_fn(void *arg)
 			fcd_loadavg_close_and_disable(fp, mon);
 		}
 
-		fail = (avgs[0] >= fcd_loadavg_fail);
-		warn = fail ? 0 : (avgs[0] >= fcd_loadavg_warn);
+		for (fail = 0, warn = 0, i = 0; i < FCD_ARRAY_SIZE(avgs); ++i) {
+
+			if (avgs[i] >= fcd_loadavg_crit[i]) {
+				fail = 1;
+				warn = 0;
+				break;
+			}
+
+			if (avgs[i] >= fcd_loadavg_warn[i])
+				warn = 1;
+		}
 
 		ret = snprintf(buf, sizeof buf, "%.2f %.2f %.2f",
 			       avgs[0], avgs[1], avgs[2]);
