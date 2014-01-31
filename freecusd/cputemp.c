@@ -54,10 +54,10 @@ static int fcd_cputemp_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 			  const cip_ini_file *file __attribute__((unused)),
 			  void *post_parse_data)
 {
+	const float *p;
 	double temp;
-	float *p;
 
-	p = (float *)(value->value);
+	p = (const float *)(value->value);
 	temp = *p;
 
 	if (temp < INT_MIN / 1000 || temp > INT_MAX / 1000) {
