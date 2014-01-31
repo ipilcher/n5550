@@ -60,9 +60,8 @@ __attribute__((noreturn))
 static void *fcd_smart_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
-	int disk_presence[5], disk_alerts[5], pipe_fds[2];
-	int warn, status, i, disks_changed;
-	time_t now, last;
+	int disk_alerts[5], pipe_fds[2];
+	int warn, status, i;
 	char buf[21];
 
 	if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
@@ -70,28 +69,14 @@ static void *fcd_smart_fn(void *arg)
 		fcd_lib_disable_monitor(mon);
 	}
 
-	memset(disk_presence, 0, sizeof disk_presence);
-	last = 0;
-
 	do {
 		memset(buf, ' ', sizeof buf);
-		now = time(NULL);
-
-		disks_changed = fcd_lib_disk_presence(disk_presence);
-		if (disks_changed == -1)
-			fcd_lib_disable_cmd_mon(mon, pipe_fds, NULL);
-
-		if (disks_changed == 0 && now - last < 1800)
-			goto continue_outer_loop;
-
-		last = now;
-
 		memset(disk_alerts, 0, sizeof disk_alerts);
 		warn = 0;
 
 		for (i = 0; i < 5; ++i)
 		{
-			if (disk_presence[i] == 0) {
+			if (0) {
 				memset(buf + i * 3, '-', 2);
 				continue;	/* inner loop */
 			}
@@ -117,8 +102,7 @@ static void *fcd_smart_fn(void *arg)
 		fcd_lib_set_mon_status(mon, buf, warn, 0, disk_alerts);
 
 continue_outer_loop:
-
-		i = fcd_lib_monitor_sleep(30);
+		i = fcd_lib_monitor_sleep(1800);
 		if (i == -1)
 			fcd_lib_disable_cmd_mon(mon, pipe_fds, NULL);
 
