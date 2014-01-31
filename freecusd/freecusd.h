@@ -29,6 +29,9 @@
 
 #include <libcip.h>
 
+#define FCD_DISK_NAME_SIZE             (sizeof "/dev/sd_")
+#define FCD_MAX_DISK_COUNT             5
+
 /*
  * Error reporting stuff
  */
@@ -171,6 +174,10 @@ extern struct fcd_monitor fcd_hddtemp_monitor;
 extern struct fcd_monitor fcd_smart_monitor;
 extern struct fcd_monitor fcd_raid_monitor;
 extern struct fcd_monitor *fcd_monitors[];
+
+/* Number and names of disks to monitor */
+extern unsigned fcd_conf_disk_count;
+extern char fcd_conf_disk_names[FCD_MAX_DISK_COUNT][FCD_DISK_NAME_SIZE];
 
 /*
  * Non-static functions
