@@ -124,8 +124,7 @@ static int fcd_conf_raiddisks_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 /*
  * Post-parse callback for monitor enable/disable booleans
  */
-int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
-			   const cip_ini_value *value,
+int fcd_conf_mon_enable_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 			   const cip_ini_sect *sect __attribute__((unused)),
 			   const cip_ini_file *file __attribute__((unused)),
 			   void *post_parse_data)
@@ -138,8 +137,8 @@ int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
 
 	mon->enabled = *b;
 	if (!mon->enabled) {
-		FCD_INFO("%s monitor disabled by configuration setting\n",
-			 mon->name);
+		cip_err(ctx, "%s monitor disabled by configuration setting\n",
+			mon->name);
 	}
 
 	return 0;
