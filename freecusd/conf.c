@@ -55,7 +55,7 @@ static const cip_opt_info fcd_conf_freecusd_opts[] = {
 		.default_value	= &fcd_conf_disk_names_def,
 		.flags		= CIP_OPT_DEFAULT,
 	},
-	{ 0 }
+	{	.name		= NULL		}
 };
 
 static const cip_sect_info fcd_conf_freecusd_sect = {
