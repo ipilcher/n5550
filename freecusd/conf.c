@@ -123,6 +123,22 @@ static int fcd_conf_raiddisks_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 }
 
 /*
+ * Post-parse callback for a simple [freecusd] boolean
+ */
+int fcd_conf_bool_cb(cip_err_ctx *ctx __attribute__((unused)),
+		     const cip_ini_value *value,
+		     const cip_ini_sect *sect __attribute__((unused)),
+		     const cip_ini_file *file __attribute__((unused)),
+		     void *post_parse_data)
+{
+	const bool *bp;
+
+	bp = (const bool *)(value->value);
+	*(bool *)post_parse_data = *bp;
+	return 0;
+}
+
+/*
  * Parse the configuration file
  */
 static int fcd_conf_warn(const char *msg)
