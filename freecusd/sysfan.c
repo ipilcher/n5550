@@ -19,11 +19,53 @@
 #include <string.h>
 
 /* Alert thresholds */
-static const int fcd_sysfan_warn = 1200;
-static const int fcd_sysfan_fail = 500;
+static int fcd_sysfan_warn = 1200;	/* sysfan_rpm_warn */
+static int fcd_sysfan_fail = 500;	/* sysfan_rpm_crit */
+
+static int fcd_sysfan_rpm_cb();
+
+static const cip_opt_info fcd_sysfan_opts[] = {
+	{
+		.name			= "sysfan_rpm_warn",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_sysfan_rpm_cb,
+		.post_parse_data	= &fcd_sysfan_warn,
+	},
+	{
+		.name			= "sysfan_rpm_crit",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_sysfan_rpm_cb,
+		.post_parse_data	= &fcd_sysfan_fail,
+	},
+	{	.name			= NULL		}
+};
 
 static const char fcd_sysfan_input[] =
 		"/sys/devices/platform/it87.656/fan3_input";
+
+/*
+ * Configuration callback for alert thresholds
+ */
+static int fcd_sysfan_rpm_cb(cip_err_ctx *ctx, const cip_ini_value *value,
+			     const cip_ini_sect *sect __attribute__((unused)),
+			     const cip_ini_file *file __attribute__((unused)),
+			     void *post_parse_data)
+{
+	int rpm, *p;
+
+	p = (int *)(value->value);
+	rpm = *p;
+
+	if (rpm <= 0 || rpm >= 100000) {
+		cip_err(ctx, "Probably not a useful system fan RPM value: %d",
+			rpm);
+	}
+
+	p = post_parse_data;
+	*p = rpm;
+
+	return 0;
+}
 
 __attribute__((noreturn))
 static void fcd_sysfan_close_and_disable(FILE *fp, struct fcd_monitor *mon)
@@ -103,4 +145,5 @@ struct fcd_monitor fcd_sysfan_monitor = {
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_sysfan_monitor",
+	.freecusd_opts		= fcd_sysfan_opts,
 };
