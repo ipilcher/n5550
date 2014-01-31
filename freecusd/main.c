@@ -93,6 +93,15 @@ static void fcd_main_parse_args(int argc, char *argv[])
 		if (strcmp("-f", argv[i]) == 0) {
 			fcd_err_foreground = 1;
 		}
+		else if (strcmp("-c", argv[i]) == 0) {
+			if (++i < argc) {
+				fcd_conf_file_name = argv[i];
+			}
+			else {
+				FCD_WARN("Option '-c' not followed by "
+					 "file name\n");
+			}
+		}
 		else {
 			FCD_WARN("Unknown option: '%s'\n", argv[i]);
 		}
@@ -233,6 +242,7 @@ int main(int argc, char *argv[])
 			FCD_PABORT("daemon");
 	}
 
+	fcd_conf_parse();
 	setlocale(LC_NUMERIC, "");
 
 	fcd_main_sigmask(&worker_sigmask, SIGINT, SIGTERM, SIGCHLD, SIGUSR1, 0);

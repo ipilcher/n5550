@@ -154,6 +154,9 @@ struct fcd_monitor {
  * Global variables
  */
 
+/* Configuration file name */
+extern const char *fcd_conf_file_name;
+
 /* Detach from terminal?  Log to syslog or stderr? */
 extern int fcd_err_foreground;
 
@@ -226,5 +229,8 @@ extern void fcd_lib_disable_monitor(struct fcd_monitor *mon);
 __attribute__((noreturn))
 extern void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon,
 				    const int *pipe_fds, char *buf);
+
+/* Config file parsing - conf.c */
+extern void fcd_conf_parse(void);
 
 #endif	/* FREECUSD_H */
