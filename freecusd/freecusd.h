@@ -232,8 +232,5 @@ extern void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon,
 
 /* Config file parsing - conf.c */
 extern void fcd_conf_parse(void);
-extern int fcd_conf_bool_cb(cip_err_ctx *ctx, const cip_ini_value *value,
-			    const cip_ini_sect *sect, const cip_ini_file *file,
-			    void *post_parse_data);
 
 #endif	/* FREECUSD_H */
