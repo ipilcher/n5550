@@ -22,6 +22,60 @@
 static double fcd_loadavg_warn[3] = { 12.0, 12.0, 12.0 };
 static double fcd_loadavg_crit[3] = { 16.0, 16.0, 16.0 };
 
+static int fcd_loadavg_cb();
+
+static const cip_opt_info fcd_loadavg_opts[] = {
+	{
+		.name			= "load_avg_warn",
+		.type			= CIP_OPT_TYPE_FLOAT_LIST,
+		.post_parse_fn		= fcd_loadavg_cb,
+		.post_parse_data	= fcd_loadavg_warn,
+	},
+	{
+		.name			= "load_avg_crit",
+		.type			= CIP_OPT_TYPE_FLOAT_LIST,
+		.post_parse_fn		= fcd_loadavg_cb,
+		.post_parse_data	= fcd_loadavg_crit,
+	},
+	{	.name			= NULL		}
+};
+
+/*
+ * Configuration callback for alert thresholds
+ */
+static int fcd_loadavg_cb(cip_err_ctx *ctx, const cip_ini_value *value,
+			  const cip_ini_sect *sect __attribute__((unused)),
+			  const cip_ini_file *file __attribute__((unused)),
+			  void *post_parse_data)
+{
+	const cip_float_list *list;
+	double avg, *p;
+	unsigned i;
+
+	list = (const cip_float_list *)(value->value);
+	if (list->count != 3) {
+		cip_err(ctx, "Must specify 3 load average values");
+		return -1;
+	}
+
+	p = post_parse_data;
+
+	for (i = 0; i < 3; ++i) {
+
+		avg = list->values[i];
+
+		if (avg <= 0.0 || avg >= 100.0) {
+			cip_err(ctx,
+				"Probably not a useful load average value: %g",
+				avg);
+		}
+
+		p[i] = avg;
+	}
+
+	return 0;
+}
+
 __attribute__((noreturn))
 static void fcd_loadavg_close_and_disable(FILE *fp, struct fcd_monitor *mon)
 {
@@ -112,4 +166,5 @@ struct fcd_monitor fcd_loadavg_monitor = {
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_loadavg_monitor",
+	.freecusd_opts		= fcd_loadavg_opts,
 };
