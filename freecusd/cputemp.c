@@ -17,15 +17,63 @@
 #include "freecusd.h"
 
 #include <string.h>
+#include <limits.h>
 
 /* Alert thresholds */
-static const int fcd_cputemp_warn = 47000;
-static const int fcd_cputemp_fail = 52000;
+static int fcd_cputemp_warn = 47000;	/* cpu_temp_warn */
+static int fcd_cputemp_fail = 52000;	/* cpu_temp_crit */
+
+static int fcd_cputemp_cb();
+
+static const cip_opt_info fcd_cputemp_opts[] = {
+	{
+		.name			= "cpu_temp_warn",
+		.type			= CIP_OPT_TYPE_FLOAT,
+		.post_parse_fn		= fcd_cputemp_cb,
+		.post_parse_data	= &fcd_cputemp_warn,
+	},
+	{
+		.name			= "cpu_temp_crit",
+		.type			= CIP_OPT_TYPE_FLOAT,
+		.post_parse_fn		= fcd_cputemp_cb,
+		.post_parse_data	= &fcd_cputemp_fail,
+	},
+	{	.name			= NULL		}
+};
 
 static const char *fcd_cputemp_input[2] = {
 	"/sys/devices/platform/coretemp.0/temp2_input",
 	"/sys/devices/platform/coretemp.0/temp3_input"
 };
+
+/*
+ * Configuration callback for alert thresholds
+ */
+static int fcd_cputemp_cb(cip_err_ctx *ctx, const cip_ini_value *value,
+			  const cip_ini_sect *sect __attribute__((unused)),
+			  const cip_ini_file *file __attribute__((unused)),
+			  void *post_parse_data)
+{
+	double temp;
+	float *p;
+
+	p = (float *)(value->value);
+	temp = *p;
+
+	if (temp < INT_MIN / 1000 || temp > INT_MAX / 1000) {
+		cip_err(ctx,
+			"CPU temperature (%g) outside valid range (%d - %d)",
+			temp, INT_MIN / 1000, INT_MAX / 1000);
+		return -1;
+	}
+
+	if (temp <= 0.0 || temp >= 1000.0)
+		cip_err(ctx, "Probably not a useful CPU temperature: %g", temp);
+
+	*(int *)post_parse_data = (int)(temp * 1000.0);
+
+	return 0;
+}
 
 __attribute__((noreturn))
 static void fcd_cputemp_close_and_disable(FILE **fp, struct fcd_monitor *mon)
@@ -125,4 +173,5 @@ struct fcd_monitor fcd_cputemp_monitor = {
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_cputemp_monitor",
+	.freecusd_opts		= fcd_cputemp_opts,
 };
