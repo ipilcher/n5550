@@ -94,10 +94,12 @@ static void *fcd_loadavg_fn(void *arg)
 }
 
 struct fcd_monitor fcd_loadavg_monitor = {
-	.mutex		= PTHREAD_MUTEX_INITIALIZER,
-	.name		= "load average",
-	.monitor_fn	= fcd_loadavg_fn,
-	.buf		= "....."
-			  "LOAD AVERAGE        "
-			  "                    ",
+	.mutex			= PTHREAD_MUTEX_INITIALIZER,
+	.name			= "load average",
+	.monitor_fn		= fcd_loadavg_fn,
+	.buf			= "....."
+				  "LOAD AVERAGE        "
+				  "                    ",
+	.enabled		= true,
+	.enabled_opt_name	= "enable_loadavg_monitor",
 };

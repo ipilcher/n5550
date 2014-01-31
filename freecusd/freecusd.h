@@ -20,6 +20,7 @@
 #define _GNU_SOURCE	/* for ppoll, pipe2, vsyslog, etc. */
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <pthread.h>
 #include <syslog.h>
 #include <stdlib.h>

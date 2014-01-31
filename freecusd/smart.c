@@ -129,10 +129,12 @@ continue_outer_loop:
 }
 
 struct fcd_monitor fcd_smart_monitor = {
-	.mutex		= PTHREAD_MUTEX_INITIALIZER,
-	.name		= "SMART status",
-	.monitor_fn	= fcd_smart_fn,
-	.buf		= "....."
-			  "S.M.A.R.T. STATUS   "
-			  "                    ",
+	.mutex			= PTHREAD_MUTEX_INITIALIZER,
+	.name			= "SMART status",
+	.monitor_fn		= fcd_smart_fn,
+	.buf			= "....."
+				  "S.M.A.R.T. STATUS   "
+				  "                    ",
+	.enabled		= true,
+	.enabled_opt_name	= "enable_smart_monitor",
 };

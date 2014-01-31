@@ -187,10 +187,12 @@ static void *fcd_hddtemp_fn(void *arg)
 }
 
 struct fcd_monitor fcd_hddtemp_monitor = {
-	.mutex		= PTHREAD_MUTEX_INITIALIZER,
-	.name		= "HDD temperature",
-	.monitor_fn	= fcd_hddtemp_fn,
-	.buf		= "....."
-			  "HDD TEMPERATURE     "
-			  "                    ",
+	.mutex			= PTHREAD_MUTEX_INITIALIZER,
+	.name			= "HDD temperature",
+	.monitor_fn		= fcd_hddtemp_fn,
+	.buf			= "....."
+				  "HDD TEMPERATURE     "
+				  "                    ",
+	.enabled		= true,
+	.enabled_opt_name	= "enable_hddtemp_monitor",
 };

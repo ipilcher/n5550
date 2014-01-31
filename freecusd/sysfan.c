@@ -95,10 +95,12 @@ static void *fcd_sysfan_fn(void *arg)
 }
 
 struct fcd_monitor fcd_sysfan_monitor = {
-	.mutex		= PTHREAD_MUTEX_INITIALIZER,
-	.name		= "system fan",
-	.monitor_fn	= fcd_sysfan_fn,
-	.buf		= "....."
-			  "SYSTEM FAN          "
-			  "                    ",
+	.mutex			= PTHREAD_MUTEX_INITIALIZER,
+	.name			= "system fan",
+	.monitor_fn		= fcd_sysfan_fn,
+	.buf			= "....."
+				  "SYSTEM FAN          "
+				  "                    ",
+	.enabled		= true,
+	.enabled_opt_name	= "enable_sysfan_monitor",
 };

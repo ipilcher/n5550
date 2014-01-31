@@ -117,10 +117,12 @@ static void *fcd_cputemp_fn(void *arg)
 }
 
 struct fcd_monitor fcd_cputemp_monitor = {
-	.mutex		= PTHREAD_MUTEX_INITIALIZER,
-	.name		= "CPU temperature",
-	.monitor_fn	= fcd_cputemp_fn,
-	.buf		= "....."
-			  "CPU TEMPERATURE     "
-			  "                    ",
+	.mutex			= PTHREAD_MUTEX_INITIALIZER,
+	.name			= "CPU temperature",
+	.monitor_fn		= fcd_cputemp_fn,
+	.buf			= "....."
+				  "CPU TEMPERATURE     "
+				  "                    ",
+	.enabled		= true,
+	.enabled_opt_name	= "enable_cputemp_monitor",
 };

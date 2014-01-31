@@ -16,7 +16,6 @@
 
 #include "freecusd.h"
 
-#include <stdbool.h>
 #include <string.h>
 #include <errno.h>
 

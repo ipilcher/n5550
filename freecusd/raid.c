@@ -1043,10 +1043,12 @@ static void *fcd_raid_fn(void *arg)
 }
 
 struct fcd_monitor fcd_raid_monitor = {
-	.mutex		= PTHREAD_MUTEX_INITIALIZER,
-	.name		= "RAID status",
-	.monitor_fn	= fcd_raid_fn,
-	.buf		= "....."
-			  "RAID STATUS         "
-			  "                    ",
+	.mutex			= PTHREAD_MUTEX_INITIALIZER,
+	.name			= "RAID status",
+	.monitor_fn		= fcd_raid_fn,
+	.buf			= "....."
+				  "RAID STATUS         "
+				  "                    ",
+	.enabled		= true,
+	.enabled_opt_name	= "enable_raid_monitor",
 };
