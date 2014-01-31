@@ -31,6 +31,18 @@ static char *fcd_smart_cmd[] = {
 	[7] = NULL
 };
 
+static bool fcd_smart_disabled[FCD_MAX_DISK_COUNT];
+
+static const cip_opt_info fcd_smart_opts[] = {
+	{
+		.name			= "smart_monitor_ignore",
+		.type			= CIP_OPT_TYPE_BOOL,
+		.post_parse_fn		= fcd_conf_disk_bool_cb,
+		.post_parse_data	= fcd_smart_disabled,
+	},
+	{	.name			= NULL		}
+};
+
 static int fcd_smart_status(int disk, const int *pipe_fds,
 			    struct fcd_monitor *mon)
 {
@@ -57,7 +69,7 @@ __attribute__((noreturn))
 static void *fcd_smart_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
-	int disk_alerts[5], pipe_fds[2];
+	int disk_alerts[FCD_MAX_DISK_COUNT], pipe_fds[2];
 	int warn, status, i;
 	char buf[21];
 
@@ -73,10 +85,8 @@ static void *fcd_smart_fn(void *arg)
 
 		for (i = 0; i < (int)fcd_conf_disk_count; ++i)
 		{
-			if (0) {
-				memset(buf + i * 3, '-', 2);
+			if (fcd_smart_disabled[i])
 				continue;	/* inner loop */
-			}
 
 			status = fcd_smart_status(i, pipe_fds, mon);
 			if (status == -3)
@@ -118,4 +128,5 @@ struct fcd_monitor fcd_smart_monitor = {
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_smart_monitor",
+	.raiddisk_opts		= fcd_smart_opts,
 };
