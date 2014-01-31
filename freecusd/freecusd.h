@@ -140,6 +140,7 @@ enum fcd_alert_msg {
 struct fcd_monitor {
 	pthread_mutex_t mutex;
 	const char *name;
+	const char *enabled_opt_name;
 	const cip_opt_info *freecusd_opts;
 	const cip_opt_info *raiddisk_opts;
 	void *(*monitor_fn)(void *);
@@ -147,6 +148,7 @@ struct fcd_monitor {
 	enum fcd_alert_msg sys_warn;
 	enum fcd_alert_msg sys_fail;
 	enum fcd_alert_msg disk_alerts[5];
+	bool enabled;
 	uint8_t buf[66];
 };
 
