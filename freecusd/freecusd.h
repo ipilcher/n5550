@@ -213,7 +213,6 @@ extern int fcd_proc_close_pipe(const int *pipe_fds);
 __attribute__((noreturn)) extern void *fcd_proc_fn(void *arg);
 
 /* Utility functions - lib.c */
-extern int fcd_lib_disk_presence(int *presence);
 extern void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,
 				   int warn, int fail, const int *disks);
 extern int fcd_lib_monitor_sleep(time_t seconds);

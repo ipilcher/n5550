@@ -345,42 +345,6 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf, int warn,
 }
 
 /*
- * Updates an array of 5 elements, each of which indicates whether a disk drive
- * (sdb - sdf) is present (1) or absent (0).  Returns 1 if any of the 5 elements
- * were changed, 0 if there was no change, -1 on error.
- */
-int fcd_lib_disk_presence(int *presence)
-{
-	char dev[sizeof "/dev/sdX"];
-	int i, present, changed;
-
-	for (changed = 0, i = 0; i < 5; ++i) {
-
-		sprintf(dev, "/dev/sd%c", 'b' + i);
-
-		if (access(dev, F_OK) == -1) {
-			if (errno == ENOENT) {
-				present = 0;
-			}
-			else {
-				FCD_PERROR(dev);
-				return -1;
-			}
-		}
-		else {
-			present = 1;
-		}
-
-		if (presence[i] != present) {
-			presence[i] = present;
-			changed = 1;
-		}
-	}
-
-	return changed;
-}
-
-/*
  * Called in child process to set up STDOUT/STDERR and exec external program.
  * Never returns (aborts on error).
  */
