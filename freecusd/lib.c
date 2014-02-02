@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -312,10 +312,10 @@ void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon, const int *pipe_fds,
  * Called by monitor threads to update message buffer and alerts in monitor
  * structure, where main thread will act upon them.
  */
-void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,int warn,
+void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf, int warn,
 			    int fail, const int *disks)
 {
-	size_t i;
+	unsigned i;
 	int ret;
 
 	ret = pthread_mutex_lock(&mon->mutex);
@@ -331,7 +331,7 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,int warn,
 
 	if (disks != NULL) {
 
-		for (i = 0; i < FCD_ARRAY_SIZE(mon->disk_alerts); ++i) {
+		for (i = 0; i < fcd_conf_disk_count; ++i) {
 
 			fcd_alert_update(disks[i] ? FCD_ALERT_SET_REQ :
 						    FCD_ALERT_CLR_REQ,

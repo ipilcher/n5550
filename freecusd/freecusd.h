@@ -146,10 +146,10 @@ struct fcd_monitor {
 	const cip_opt_info *raiddisk_opts;
 	void *(*monitor_fn)(void *);
 	pthread_t tid;
+	bool enabled;
 	enum fcd_alert_msg sys_warn;
 	enum fcd_alert_msg sys_fail;
-	enum fcd_alert_msg disk_alerts[5];
-	bool enabled;
+	enum fcd_alert_msg disk_alerts[FCD_MAX_DISK_COUNT];
 	uint8_t buf[66];
 };
 
