@@ -944,7 +944,7 @@ static void fcd_raid_result(int *ok, int *warn, int *fail, int *disks,
 			    const struct fcd_raid_array *array)
 {
 	enum fcd_raid_dev_stat status;
-	size_t i;
+	unsigned i;
 
 	switch (array->array_status) {
 
@@ -969,14 +969,15 @@ static void fcd_raid_result(int *ok, int *warn, int *fail, int *disks,
 	if (array->array_status == FCD_RAID_ARRAY_STOPPED)
 		return;
 
-	for (i = 0; i < FCD_ARRAY_SIZE(array->dev_status); ++i) {
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
 
 		status = array->dev_status[i];
 
 		if (status == FCD_RAID_DEV_FAILED ||
 				status == FCD_RAID_DEV_MISSING ||
 				(status == FCD_RAID_DEV_UNKNOWN &&
-						array->ideal_devs == 5)) {
+					array->ideal_devs ==
+						(int)fcd_conf_disk_count)) {
 			++disks[i];
 		}
 	}
