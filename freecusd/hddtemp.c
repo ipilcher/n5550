@@ -143,8 +143,8 @@ __attribute__((noreturn))
 static void *fcd_hddtemp_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
-	int ret, i, temps[5], pipe_fds[2];
-	int max, warn, fail, disk_alerts[5];
+	int ret, i, temps[FCD_MAX_DISK_COUNT], pipe_fds[2];
+	int max, warn, fail, disk_alerts[FCD_MAX_DISK_COUNT];
 	char *b, buf[21], *cmd_buf;
 	size_t buf_size;
 
@@ -158,8 +158,9 @@ static void *fcd_hddtemp_fn(void *arg)
 	buf_size = 0;
 
 	do {
-		temps[0] = temps[1] = temps[2] = temps[3] = temps[4] = INT_MIN;
 		memset(buf, ' ', sizeof buf);
+		for (i = 0; i < (int)fcd_conf_disk_count; ++i)
+			temps[i] = INT_MIN;
 
 		if (fcd_hddtemp_exec(&cmd_buf, &buf_size, pipe_fds, mon) == -3)
 			continue;
@@ -169,9 +170,13 @@ static void *fcd_hddtemp_fn(void *arg)
 		memset(disk_alerts, 0, sizeof disk_alerts);
 		max = 0;
 
-		for (i = 0, b = buf; i < 5; ++i)
+		for (i = 0, b = buf; i < (int)fcd_conf_disk_count; ++i)
 		{
-			if (temps[i] >= -99 && temps[i] <= 999) {
+			if (fcd_hddtemp_disabled[i]) {
+				memset(b, '.', 2);
+				b += 3;
+			}
+			else if (temps[i] >= -99 && temps[i] <= 999) {
 
 				disk_alerts[i] = (temps[i] >= fcd_hddtemp_warn);
 				if (temps[i] > max)
@@ -186,9 +191,7 @@ static void *fcd_hddtemp_fn(void *arg)
 				b += ret;
 			}
 			else {
-				if (/* disk_presence[i] == */ 0)
-					memset(b, '-', 2);
-				else if (temps[i] == INT_MIN)
+				if (temps[i] == INT_MIN)
 					memset(b, '?', 2);
 				else
 					memset(b, '*', 2);
