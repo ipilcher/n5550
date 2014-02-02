@@ -27,16 +27,17 @@ static const int fcd_hddtemp_fail = 50;
 
 #define FCD_HDDTEMP_BUF_MAX	1000
 
-static char *fcd_hddtemp_cmd[] = {
-	"/usr/sbin/hddtemp",
-	"hddtemp",
-	"/dev/sdb",
-	"/dev/sdc",
-	"/dev/sdd",
-	"/dev/sde",
-	"/dev/sdf",
-	NULL
+static char *fcd_hddtemp_cmd[FCD_MAX_DISK_COUNT + 3] = {
+	"/usr/sbin/hddtemp", "hddtemp"
 };
+
+static void fcd_hddtemp_mkcmd(void)
+{
+	unsigned i;
+
+	for (i = 0; i < fcd_conf_disk_count; ++i)
+		fcd_hddtemp_cmd[i + 2] = fcd_conf_disk_names[i];
+}
 
 static int fcd_hddtemp_exec(char **cmd_buf, size_t *buf_size,
 			    const int *pipe_fds, struct fcd_monitor *mon)
@@ -113,7 +114,7 @@ __attribute__((noreturn))
 static void *fcd_hddtemp_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
-	int ret, i, temps[5], disk_presence[5], pipe_fds[2];
+	int ret, i, temps[5], pipe_fds[2];
 	int max, warn, fail, disk_alerts[5];
 	char *b, buf[21], *cmd_buf;
 	size_t buf_size;
@@ -123,17 +124,13 @@ static void *fcd_hddtemp_fn(void *arg)
 		fcd_lib_disable_monitor(mon);
 	}
 
+	fcd_hddtemp_mkcmd();
 	cmd_buf = NULL;
 	buf_size = 0;
-
-	memset(disk_presence, 0, sizeof disk_presence);
 
 	do {
 		temps[0] = temps[1] = temps[2] = temps[3] = temps[4] = INT_MIN;
 		memset(buf, ' ', sizeof buf);
-
-		if (fcd_lib_disk_presence(disk_presence) == -1)
-			fcd_lib_disable_cmd_mon(mon, pipe_fds, cmd_buf);
 
 		if (fcd_hddtemp_exec(&cmd_buf, &buf_size, pipe_fds, mon) == -3)
 			continue;
@@ -160,7 +157,7 @@ static void *fcd_hddtemp_fn(void *arg)
 				b += ret;
 			}
 			else {
-				if (disk_presence[i] == 0)
+				if (/* disk_presence[i] == */ 0)
 					memset(b, '-', 2);
 				else if (temps[i] == INT_MIN)
 					memset(b, '?', 2);
