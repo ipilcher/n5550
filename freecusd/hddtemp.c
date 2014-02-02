@@ -29,6 +29,7 @@ static const int fcd_hddtemp_fail = 50;
 
 static char *fcd_hddtemp_cmd[FCD_MAX_DISK_COUNT + 3] = {
 	"/usr/sbin/hddtemp", "hddtemp"
+	/* remaining array members are automatically set to NULL */
 };
 
 static bool fcd_hddtemp_disabled[FCD_MAX_DISK_COUNT];
@@ -47,10 +48,16 @@ static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
 
 static void fcd_hddtemp_mkcmd(void)
 {
-	unsigned i;
+	unsigned i, j;
 
-	for (i = 0; i < fcd_conf_disk_count; ++i)
-		fcd_hddtemp_cmd[i + 2] = fcd_conf_disk_names[i];
+	for (i = 0, j = 0; i < fcd_conf_disk_count; ++i) {
+
+		if (fcd_hddtemp_disabled[i])
+			continue;
+
+		fcd_hddtemp_cmd[j + 2] = fcd_conf_disk_names[i];
+		++j;
+	}
 }
 
 static int fcd_hddtemp_exec(char **cmd_buf, size_t *buf_size,
@@ -114,13 +121,21 @@ static void fcd_hddtemp_parse(char *cmd_buf, int *temps, const int *pipe_fds,
 			fcd_lib_disable_cmd_mon(mon, pipe_fds, cmd_buf);
 		}
 
-		if (ret != 2 || n == -1 || errno != 0 || c < 'b' || c > 'f') {
-			FCD_WARN("Error parsing hddtemp output\n");
-			fcd_lib_disable_cmd_mon(mon, pipe_fds, cmd_buf);
-		}
+		if (ret != 2 || n == -1 || errno != 0)
+			goto parse_error;
 
-		temps[c - 'b'] = temp;
+		n = fcd_lib_disk_index(c);
+		if (n == -1)
+			goto parse_error;
+
+		temps[n] = temp;
 	}
+
+	return;
+
+parse_error:
+	FCD_WARN("Error parsing hddtemp output\n");
+	fcd_lib_disable_cmd_mon(mon, pipe_fds, cmd_buf);
 }
 
 
