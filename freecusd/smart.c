@@ -85,8 +85,10 @@ static void *fcd_smart_fn(void *arg)
 
 		for (i = 0; i < (int)fcd_conf_disk_count; ++i)
 		{
-			if (fcd_smart_disabled[i])
+			if (fcd_smart_disabled[i]) {
+				memcpy(buf + i * 3, "..", 2);
 				continue;	/* inner loop */
+			}
 
 			status = fcd_smart_status(i, pipe_fds, mon);
 			if (status == -3)
