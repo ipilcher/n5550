@@ -124,11 +124,11 @@ static void fcd_hddtemp_parse(char *cmd_buf, int *temps, const int *pipe_fds,
 		if (ret != 2 || n == -1 || errno != 0)
 			goto parse_error;
 
-		n = fcd_lib_disk_index(c);
-		if (n == -1)
+		ret = fcd_lib_disk_index(c);
+		if (ret == -1)
 			goto parse_error;
 
-		temps[n] = temp;
+		temps[ret] = temp;
 	}
 
 	return;
