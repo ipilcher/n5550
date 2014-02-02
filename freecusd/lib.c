@@ -548,3 +548,19 @@ int fcd_lib_cmd_status(char **cmd, struct timespec *timeout,
 
 	return WEXITSTATUS(status);
 }
+
+/*
+ * Returns the index of the RAID disk identified by c, -1 on error
+ */
+int fcd_lib_disk_index(char c)
+{
+	int i;
+
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
+
+		if (c == fcd_conf_disk_names[i][FCD_DISK_NAME_SIZE - 2])
+			return i;
+	}
+
+	return -1;
+}

@@ -202,7 +202,7 @@ struct fcd_raid_array {
 	int current_devs;
 	enum fcd_raid_type type;
 	enum fcd_raid_arr_stat array_status;
-	enum fcd_raid_dev_stat dev_status[5];
+	enum fcd_raid_dev_stat dev_status[FCD_MAX_DISK_COUNT];
 };
 
 static struct fcd_raid_array *fcd_raid_list = NULL;
@@ -983,7 +983,7 @@ __attribute__((noreturn))
 static void *fcd_raid_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
-	int ret, fd, ok, warn, fail, disks[5], pipe_fds[2];
+	int ret, fd, ok, warn, fail, disks[FCD_MAX_DISK_COUNT], pipe_fds[2];
 	const struct fcd_raid_array *array;
 	char buf[21], *mdstat_buf;
 	size_t mdstat_size;

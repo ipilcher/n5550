@@ -232,6 +232,7 @@ extern void fcd_lib_disable_monitor(struct fcd_monitor *mon);
 __attribute__((noreturn))
 extern void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon,
 				    const int *pipe_fds, char *buf);
+extern int fcd_lib_disk_index(char c);
 
 /* Config file parsing - conf.c */
 extern void fcd_conf_parse(void);
