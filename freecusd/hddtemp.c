@@ -31,6 +31,20 @@ static char *fcd_hddtemp_cmd[FCD_MAX_DISK_COUNT + 3] = {
 	"/usr/sbin/hddtemp", "hddtemp"
 };
 
+static bool fcd_hddtemp_disabled[FCD_MAX_DISK_COUNT];
+
+static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
+	{
+		.name			= "hddtemp_monitor_ignore",
+		.type			= CIP_OPT_TYPE_BOOL,
+		.post_parse_fn		= fcd_conf_disk_bool_cb,
+		.post_parse_data	= fcd_hddtemp_disabled,
+	},
+	{
+		.name			= NULL
+	}
+};
+
 static void fcd_hddtemp_mkcmd(void)
 {
 	unsigned i;
@@ -192,4 +206,5 @@ struct fcd_monitor fcd_hddtemp_monitor = {
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_hddtemp_monitor",
+	.raiddisk_opts		= fcd_hddtemp_raiddisk_opts,
 };
