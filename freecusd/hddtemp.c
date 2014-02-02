@@ -21,10 +21,6 @@
 #include <fcntl.h>
 #include <errno.h>
 
-/* Alert thresholds */
-static const int fcd_hddtemp_warn = 45;
-static const int fcd_hddtemp_fail = 50;
-
 #define FCD_HDDTEMP_BUF_MAX	1000
 
 static char *fcd_hddtemp_cmd[FCD_MAX_DISK_COUNT + 3] = {
@@ -32,7 +28,39 @@ static char *fcd_hddtemp_cmd[FCD_MAX_DISK_COUNT + 3] = {
 	/* remaining array members are automatically set to NULL */
 };
 
+/* Alert thresholds */
+static const int fcd_hddtemp_warn_def = 45;
+static const int fcd_hddtemp_crit_def = 50;
+
+static int fcd_hddtemp_warn[FCD_MAX_DISK_COUNT];
+static int fcd_hddtemp_crit[FCD_MAX_DISK_COUNT];
 static bool fcd_hddtemp_disabled[FCD_MAX_DISK_COUNT];
+
+static int fcd_hddtemp_freecusd_cb();
+
+static const cip_opt_info fcd_hddtemp_freecusd_opts[] = {
+	{
+		.name			= "hdd_temp_warn",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
+		.post_parse_data	= fcd_hddtemp_warn,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_hddtemp_warn_def,
+	},
+	{
+		.name			= "hdd_temp_crit",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
+		.post_parse_data	= fcd_hddtemp_crit,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_hddtemp_crit_def,
+	},
+	{
+		.name			= NULL
+	}
+};
+
+static int fcd_hddtemp_raiddisk_cb();
 
 static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
 	{
@@ -42,9 +70,68 @@ static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
 		.post_parse_data	= fcd_hddtemp_disabled,
 	},
 	{
+		.name			= "hdd_temp_warn",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
+		.post_parse_data	= fcd_hddtemp_warn,
+	},
+	{
+		.name			= "hdd_temp_crit",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
+		.post_parse_data	= fcd_hddtemp_crit,
+	},
+	{
 		.name			= NULL
 	}
 };
+
+static int fcd_hddtemp_freecusd_cb(cip_err_ctx *ctx, const cip_ini_value *value,
+				   const cip_ini_sect *sect
+						__attribute__((unused)),
+				   const cip_ini_file *file
+						__attribute__((unused)),
+				   void *post_parse_data)
+{
+	int temp, *p;
+	unsigned i;
+
+	p = (int *)(value->value);
+	temp = *p;
+
+	if (temp <= 0 || temp >= 1000)
+		cip_err(ctx, "Probably not a useful HDD temperature: %d", temp);
+
+	for (p = post_parse_data, i = 0; i < FCD_MAX_DISK_COUNT; ++i)
+		p[i] = temp;
+
+	return 0;
+}
+
+static int fcd_hddtemp_raiddisk_cb(cip_err_ctx *ctx, const cip_ini_value *value,
+				   const cip_ini_sect *sect,
+				   const cip_ini_file *file
+						__attribute__((unused)),
+				   void *post_parse_data)
+{
+	unsigned u;
+	int i, *p;
+
+	i = fcd_conf_disk_idx(ctx, &u, sect);
+	if (i != 0)
+		return i;
+
+	p = (int *)(value->value);
+	i = *p;
+
+	if (i <= 0 || i >= 1000)
+		cip_err(ctx, "Probably not a useful HDD temperatore: %d", i);
+
+	p = post_parse_data;
+	p[u] = i;
+
+	return 0;
+}
 
 static void fcd_hddtemp_mkcmd(void)
 {
@@ -178,7 +265,7 @@ static void *fcd_hddtemp_fn(void *arg)
 			}
 			else if (temps[i] >= -99 && temps[i] <= 999) {
 
-				disk_alerts[i] = (temps[i] >= fcd_hddtemp_warn);
+				disk_alerts[i] = (temps[i] >= fcd_hddtemp_warn[i]);
 				if (temps[i] > max)
 					max = temps[i];
 
@@ -199,8 +286,8 @@ static void *fcd_hddtemp_fn(void *arg)
 			}
 		}
 
-		fail = (max >= fcd_hddtemp_fail);
-		warn = fail ? 0 : (max >= fcd_hddtemp_warn);
+		fail = (max >= fcd_hddtemp_crit[0]);
+		warn = fail ? 0 : (max >= fcd_hddtemp_warn[0]);
 
 		fcd_lib_set_mon_status(mon, buf, warn, fail, disk_alerts);
 
@@ -225,4 +312,5 @@ struct fcd_monitor fcd_hddtemp_monitor = {
 	.enabled		= true,
 	.enabled_opt_name	= "enable_hddtemp_monitor",
 	.raiddisk_opts		= fcd_hddtemp_raiddisk_opts,
+	.freecusd_opts		= fcd_hddtemp_freecusd_opts,
 };
