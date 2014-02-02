@@ -472,10 +472,13 @@ static regoff_t fcd_raid_parse_dev(const char *c, struct fcd_raid_array *array)
 	if (regexec(&regex->regex, c, regex->nmatch, matches, 0) != 0)
 		return 0;
 
-	/* Assume that device (match 1) is sd[b-f]XX */
+	/*
+	 * Assume that device (match 1) is either a SCSI disk (sdX) or a
+	 * partition on a SCSI disk (sdXyy), where X is in the range a-z
+	 */
 
-	i = (c + matches[1].rm_so)[2] - 'b';
-	if (i < 0 || i > 4) {
+	i = fcd_lib_disk_index((c + matches[1].rm_so)[2]);
+	if (i == -1) {
 		FCD_WARN("Unexpected RAID array member: %.*s\n",
 			 (int)(matches[1].rm_eo - matches[1].rm_so),
 			 c + matches[1].rm_so);
