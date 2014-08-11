@@ -1,0 +1,10 @@
+[Unit]
+Description=Thecus N5550 NAS monitoring daemon
+
+[Service]
+Type=forking
+# GuessMainPID=yes is default
+ExecStart=/usr/bin/freecusd
+
+[Install]
+WantedBy=multi-user.target
