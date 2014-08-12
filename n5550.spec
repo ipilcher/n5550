@@ -1,12 +1,12 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
-Version:	0.1.1
-Release:	3%{?dist}
+Version:	0.2
+Release:	1%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
-Requires:	kernel-lt-devel gcc make
-Requires:	/sbin/mdadm /usr/sbin/hddtemp /usr/sbin/smartctl
-BuildRequires:	gcc
+Requires:	kernel-plus-devel gcc make
+Requires:	/usr/sbin/mdadm /usr/sbin/hddtemp /usr/sbin/smartctl
+BuildRequires:	gcc libcip-devel
 
 %description
 Hardware support and monitoring for Thecus N5550 NAS.  This package includes
@@ -16,51 +16,68 @@ LCD display and LEDs to report system status.
 
 %prep
 %setup -q
-sed -i 's|exec=/usr/local/bin/freecusd|exec=/usr/bin/freecusd|' freecusd/freecusd.init
 
 %build
 cd freecusd
-gcc -Os -Wall -Wextra -pthread -lrt -o freecusd *.c
+gcc -Os -Wall -Wextra -pthread -lcip -o freecusd *.c
 
 %install
 rm -rf %{buildroot}
-# Monitoring daemon binary
+# Monitoring daemon
 mkdir -p %{buildroot}/usr/bin
 cp freecusd/freecusd %{buildroot}/usr/bin/
-# Monitoring daemon init script
-mkdir -p %{buildroot}/etc/rc.d/init.d
-cp freecusd/freecusd.init %{buildroot}/etc/rc.d/init.d/freecusd
+mkdir -p %{buildroot}/usr/lib/systemd/system
+cp freecusd/freecusd.service %{buildroot}/usr/lib/systemd/system/
+mkdir %{buildroot}/etc
+cp freecusd/freecusd.conf %{buildroot}/etc/
 # Kernel module sources
 mkdir -p %{buildroot}/usr/src/n5550/modules
 cp modules/{Makefile,n5550_ahci_leds.c,n5550_board.c} %{buildroot}/usr/src/n5550/modules/
-# Module config
-mkdir -p %{buildroot}/etc/sysconfig/modules
-cp conf/n5550.modules %{buildroot}/etc/sysconfig/modules/
-mkdir -p %{buildroot}/etc/modprobe.d
-cp conf/modprobe_n5550.conf %{buildroot}/etc/modprobe.d/n5550.conf
-# Dracut module
-mkdir -p %{buildroot}/usr/share/dracut/modules.d/99n5550
-cp dracut/{check,installkernel} %{buildroot}/usr/share/dracut/modules.d/99n5550/
+# Kernel module loading
+mkdir -p %{buildroot}/usr/lib/modules-load.d
+cp conf/modules-load_n5550.conf %{buildroot}/usr/lib/modules-load.d/n5550.conf
+mkdir -p %{buildroot}/usr/lib/modprobe.d
+cp conf/modprobe_n5550.conf %{buildroot}/usr/lib/modprobe.d/n5550.conf
+# Dracut
+mkdir -p %{buildroot}/usr/lib/dracut/modules.d/99n5550
+cp dracut/{check,installkernel} %{buildroot}/usr/lib/dracut/modules.d/99n5550/
+mkdir -p %{buildroot}/usr/lib/dracut/dracut.conf.d
+cp conf/dracut_n5550.conf %{buildroot}/usr/lib/dracut/dracut.conf.d/n5550.conf
 
 %clean
 rm -rf %{buildroot}
 
 %files
 %attr(0755,root,root) /usr/bin/freecusd
-%attr(0755,root,root) /etc/rc.d/init.d/freecusd
+%attr(0644,root,root) /usr/lib/systemd/system/freecusd.service
+%attr(0644,root,root) %config /etc/freecusd.conf
 %attr(0755,root,root) %dir /usr/src/n5550
 %attr(0755,root,root) %dir /usr/src/n5550/modules
 %attr(0644,root,root) /usr/src/n5550/modules/Makefile
 %attr(0644,root,root) /usr/src/n5550/modules/n5550_ahci_leds.c
 %attr(0644,root,root) /usr/src/n5550/modules/n5550_board.c
-%attr(0755,root,root) /etc/sysconfig/modules/n5550.modules
-%attr(0644,root,root) /etc/modprobe.d/n5550.conf
-%attr(0755,root,root) %dir /usr/share/dracut/modules.d/99n5550
-%attr(0755,root,root) /usr/share/dracut/modules.d/99n5550/check
-%attr(0755,root,root) /usr/share/dracut/modules.d/99n5550/installkernel
+%attr(0644,root,root) /usr/lib/modules-load.d/n5550.conf
+%attr(0644,root,root) /usr/lib/modprobe.d/n5550.conf
+%attr(0755,root,root) %dir /usr/lib/dracut/modules.d/99n5550
+%attr(0755,root,root) /usr/lib/dracut/modules.d/99n5550/check
+%attr(0755,root,root) /usr/lib/dracut/modules.d/99n5550/installkernel
+%attr(0644,root,root) /usr/lib/dracut/dracut.conf.d/n5550.conf
 %attr(0644,root,root) %doc LICENSE README
 
 %changelog
+* Tue Aug 12 2014 Ian Pilcher <arequipeno@gmail.com> - 0.2-1
+- EL7-compatible package
+
+* Mon Aug 11 2014 Ian Pilcher <arequipeno@gmail.com> - 0.1.9.1-1
+- Replace SysV init script with systemd service file
+- Move various integration files from /etc to /usr/lib
+
+* Mon Aug 11 2014 Ian Pilcher <arequipeno@gmail.com> - 0.1.9-1
+- Pre-release EL7-compatible package
+
+* Sun Aug 03 2014 Ian Pilcher <arequipeno@gmail.com> - 0.1.1-4
+- Build for EL7
+
 * Tue Nov 05 2013 Ian Pilcher <arequipeno@gmail.com> - 0.1.1-3
 - Add file dependencies for external commands called by freecusd
 - Add dist tag to release
