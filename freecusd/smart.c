@@ -31,14 +31,12 @@ static char *fcd_smart_cmd[] = {
 	[7] = NULL
 };
 
-static bool fcd_smart_disabled[FCD_MAX_DISK_COUNT];
-
 static const cip_opt_info fcd_smart_opts[] = {
 	{
 		.name			= "smart_monitor_ignore",
 		.type			= CIP_OPT_TYPE_BOOL,
 		.post_parse_fn		= fcd_conf_disk_bool_cb,
-		.post_parse_data	= fcd_smart_disabled,
+		.post_parse_data	= &fcd_conf_disks[0].smart_ignore,
 	},
 	{	.name			= NULL		}
 };
@@ -52,7 +50,7 @@ static int fcd_smart_status(int disk, const int *pipe_fds,
 	timeout.tv_sec = 2;
 	timeout.tv_nsec = 0;
 
-	fcd_smart_cmd[6] = fcd_conf_disk_names[disk];
+	fcd_smart_cmd[6] = fcd_conf_disks[disk].name;
 
 	status = fcd_lib_cmd_status(fcd_smart_cmd, &timeout, pipe_fds);
 
@@ -85,7 +83,7 @@ static void *fcd_smart_fn(void *arg)
 
 		for (i = 0; i < (int)fcd_conf_disk_count; ++i)
 		{
-			if (fcd_smart_disabled[i]) {
+			if (fcd_conf_disks[i].smart_ignore) {
 				memcpy(buf + i * 3, "..", 2);
 				continue;	/* inner loop */
 			}

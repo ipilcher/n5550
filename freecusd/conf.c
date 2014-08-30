@@ -25,10 +25,10 @@
 const char *fcd_conf_file_name = NULL;
 
 /*
- * Number and names of RAID disks
+ * RAID disk configuration
  */
 unsigned fcd_conf_disk_count = 0;
-char fcd_conf_disk_names[FCD_MAX_DISK_COUNT][FCD_DISK_NAME_SIZE];
+struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT];
 
 /*
  * Default RAID disks
@@ -112,7 +112,7 @@ static int fcd_conf_raiddisks_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 	}
 
 	for (i = 0; i < list->count; ++i) {
-		memcpy(fcd_conf_disk_names[i], list->values[i],
+		memcpy(fcd_conf_disks[i].name, list->values[i],
 		       FCD_DISK_NAME_SIZE);
 	}
 
@@ -166,7 +166,7 @@ int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
 
 	for (i = 0; i < fcd_conf_disk_count; ++i) {
 
-		if (strcmp(sect->node.name, fcd_conf_disk_names[i]) == 0) {
+		if (strcmp(sect->node.name, fcd_conf_disks[i].name) == 0) {
 			current_sect = sect;
 			current_index = i;
 			*index = i;
@@ -198,8 +198,35 @@ int fcd_conf_disk_bool_cb(cip_err_ctx *ctx __attribute__((unused)),
 	p = (bool *)(value->value);
 	b = *p;
 
-	p = post_parse_data;
-	p[i] = b;
+	p = fcd_conf_disk_member(post_parse_data, i);
+	*p = b;
+
+	return 0;
+}
+
+/*
+ * Post-parse callback helper for disk-specific integers
+ */
+int fcd_conf_disk_int_cb_help(cip_err_ctx *ctx, const cip_ini_value *value,
+			      const cip_ini_sect *sect,
+			      const cip_ini_file *file __attribute__((unused)),
+			      void *post_parse_data, int *result)
+{
+	unsigned u;
+	int i, *p;
+
+	i = fcd_conf_disk_idx(ctx, &u, sect);
+	if (i != 0)
+		return i;
+
+	p = (int *)(value->value);
+	i = *p;
+
+	p = fcd_conf_disk_member(post_parse_data, u);
+	*p = i;
+
+	if (result != NULL)
+		*result = i;
 
 	return 0;
 }
@@ -247,6 +274,30 @@ static int fcd_conf_per_mon(cip_err_ctx *ctx, struct fcd_monitor *mon,
 
 	return 0;
 }
+
+#if 0
+static void fcd_conf_dump_raid_disks(void)
+{
+	unsigned i;
+
+	if (!fcd_err_foreground)
+		return;
+
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
+		printf("%s:\n", fcd_conf_disks[i].name);
+		printf("\tS.M.A.R.T. monitor disabled: %s\n",
+		       fcd_conf_disks[i].smart_ignore ? "true" : "false");
+		printf("\tHDD temperature monitor disabled: %s\n",
+		       fcd_conf_disks[i].temp_ignore ? "true" : "false");
+		printf("\tWarning temperature: %d\n",
+		       fcd_conf_disks[i].temp_warn);
+		printf("\tCritical temperature: %d\n",
+		       fcd_conf_disks[i].temp_crit);
+	}
+
+	exit(0);
+}
+#endif
 
 void fcd_conf_parse(void)
 {
@@ -305,5 +356,8 @@ void fcd_conf_parse(void)
 	cip_ini_file_free(file);
 	cip_file_schema_free(file_schema);
 	cip_err_ctx_fini(&ctx);
+#if 0
+	fcd_conf_dump_raid_disks();
+#endif
 }
 

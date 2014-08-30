@@ -32,10 +32,6 @@ static char *fcd_hddtemp_cmd[FCD_MAX_DISK_COUNT + 3] = {
 static const int fcd_hddtemp_warn_def = 45;
 static const int fcd_hddtemp_crit_def = 50;
 
-static int fcd_hddtemp_warn[FCD_MAX_DISK_COUNT];
-static int fcd_hddtemp_crit[FCD_MAX_DISK_COUNT];
-static bool fcd_hddtemp_disabled[FCD_MAX_DISK_COUNT];
-
 static int fcd_hddtemp_freecusd_cb();
 
 static const cip_opt_info fcd_hddtemp_freecusd_opts[] = {
@@ -43,7 +39,7 @@ static const cip_opt_info fcd_hddtemp_freecusd_opts[] = {
 		.name			= "hdd_temp_warn",
 		.type			= CIP_OPT_TYPE_INT,
 		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= fcd_hddtemp_warn,
+		.post_parse_data	= &fcd_conf_disks[0].temp_warn,
 		.flags			= CIP_OPT_DEFAULT,
 		.default_value		= &fcd_hddtemp_warn_def,
 	},
@@ -51,7 +47,7 @@ static const cip_opt_info fcd_hddtemp_freecusd_opts[] = {
 		.name			= "hdd_temp_crit",
 		.type			= CIP_OPT_TYPE_INT,
 		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= fcd_hddtemp_crit,
+		.post_parse_data	= &fcd_conf_disks[0].temp_crit,
 		.flags			= CIP_OPT_DEFAULT,
 		.default_value		= &fcd_hddtemp_crit_def,
 	},
@@ -67,19 +63,19 @@ static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
 		.name			= "hddtemp_monitor_ignore",
 		.type			= CIP_OPT_TYPE_BOOL,
 		.post_parse_fn		= fcd_conf_disk_bool_cb,
-		.post_parse_data	= fcd_hddtemp_disabled,
+		.post_parse_data	= &fcd_conf_disks[0].temp_ignore,
 	},
 	{
 		.name			= "hdd_temp_warn",
 		.type			= CIP_OPT_TYPE_INT,
 		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= fcd_hddtemp_warn,
+		.post_parse_data	= &fcd_conf_disks[0].temp_warn,
 	},
 	{
 		.name			= "hdd_temp_crit",
 		.type			= CIP_OPT_TYPE_INT,
 		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= fcd_hddtemp_crit,
+		.post_parse_data	= &fcd_conf_disks[0].temp_crit,
 	},
 	{
 		.name			= NULL
@@ -102,33 +98,28 @@ static int fcd_hddtemp_freecusd_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 	if (temp <= 0 || temp >= 1000)
 		cip_err(ctx, "Probably not a useful HDD temperature: %d", temp);
 
-	for (p = post_parse_data, i = 0; i < FCD_MAX_DISK_COUNT; ++i)
-		p[i] = temp;
+	for (i = 0; i < FCD_MAX_DISK_COUNT; ++i) {
+		p = fcd_conf_disk_member(post_parse_data, i);
+		*p = temp;
+	}
 
 	return 0;
 }
 
 static int fcd_hddtemp_raiddisk_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 				   const cip_ini_sect *sect,
-				   const cip_ini_file *file
-						__attribute__((unused)),
+				   const cip_ini_file *file,
 				   void *post_parse_data)
 {
-	unsigned u;
-	int i, *p;
+	int ret, temp;
 
-	i = fcd_conf_disk_idx(ctx, &u, sect);
-	if (i != 0)
-		return i;
+	ret = fcd_conf_disk_int_cb_help(ctx, value, sect, file, post_parse_data,
+					&temp);
+	if (ret != 0)
+		return ret;
 
-	p = (int *)(value->value);
-	i = *p;
-
-	if (i <= 0 || i >= 1000)
-		cip_err(ctx, "Probably not a useful HDD temperatore: %d", i);
-
-	p = post_parse_data;
-	p[u] = i;
+	if (temp <= 0 || temp >= 1000)
+		cip_err(ctx, "Probably not a useful HDD temperature: %d", temp);
 
 	return 0;
 }
@@ -139,10 +130,10 @@ static void fcd_hddtemp_mkcmd(void)
 
 	for (i = 0, j = 0; i < fcd_conf_disk_count; ++i) {
 
-		if (fcd_hddtemp_disabled[i])
+		if (fcd_conf_disks[i].temp_ignore)
 			continue;
 
-		fcd_hddtemp_cmd[j + 2] = fcd_conf_disk_names[i];
+		fcd_hddtemp_cmd[j + 2] = fcd_conf_disks[i].name;
 		++j;
 	}
 }
@@ -257,15 +248,16 @@ static void *fcd_hddtemp_fn(void *arg)
 		memset(disk_alerts, 0, sizeof disk_alerts);
 		max = 0;
 
-		for (i = 0, b = buf; i < (int)fcd_conf_disk_count; ++i)
-		{
-			if (fcd_hddtemp_disabled[i]) {
+		for (i = 0, b = buf; i < (int)fcd_conf_disk_count; ++i) {
+
+			if (fcd_conf_disks[i].temp_ignore) {
 				memset(b, '.', 2);
 				b += 3;
 			}
 			else if (temps[i] >= -99 && temps[i] <= 999) {
 
-				disk_alerts[i] = (temps[i] >= fcd_hddtemp_warn[i]);
+				disk_alerts[i] =
+				      (temps[i] >= fcd_conf_disks[i].temp_warn);
 				if (temps[i] > max)
 					max = temps[i];
 
@@ -286,8 +278,8 @@ static void *fcd_hddtemp_fn(void *arg)
 			}
 		}
 
-		fail = (max >= fcd_hddtemp_crit[0]);
-		warn = fail ? 0 : (max >= fcd_hddtemp_warn[0]);
+		fail = (max >= fcd_conf_disks[0].temp_crit);
+		warn = fail ? 0 : (max >= fcd_conf_disks[0].temp_warn);
 
 		fcd_lib_set_mon_status(mon, buf, warn, fail, disk_alerts);
 

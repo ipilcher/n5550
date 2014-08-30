@@ -31,6 +31,7 @@
 #include <libcip.h>
 
 #define FCD_DISK_NAME_SIZE             (sizeof "/dev/sd_")
+#define FCD_DISK_DEV_SIZE	       (sizeof "sd_")
 #define FCD_MAX_DISK_COUNT             5
 
 /*
@@ -153,6 +154,15 @@ struct fcd_monitor {
 	uint8_t buf[66];
 };
 
+/* Config info about a RAID disk */
+struct fcd_raid_disk {
+	int temp_warn;
+	int temp_crit;
+	bool temp_ignore;
+	bool smart_ignore;
+	char name[FCD_DISK_NAME_SIZE];
+};
+
 /*
  * Global variables
  */
@@ -183,7 +193,17 @@ extern struct fcd_monitor *fcd_monitors[];
 
 /* Number and names of disks to monitor */
 extern unsigned fcd_conf_disk_count;
-extern char fcd_conf_disk_names[FCD_MAX_DISK_COUNT][FCD_DISK_NAME_SIZE];
+extern struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT];
+
+/*
+ * Given a pointer to a member of fcd_conf_disks[0], returns a pointer to the
+ * corresponding member of fcd_conf_disks[idx].
+ */
+__attribute__((always_inline))
+static inline void *fcd_conf_disk_member(unsigned char *member, unsigned idx)
+{
+	return member + (idx * sizeof(struct fcd_raid_disk));
+}
 
 /*
  * Non-static functions
@@ -241,5 +261,11 @@ extern int fcd_conf_disk_bool_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 				 const cip_ini_sect *sect,
 				 const cip_ini_file *file,
 				 void *post_parse_data);
+extern int fcd_conf_disk_int_cb_help(cip_err_ctx *ctx,
+				     const cip_ini_value *value,
+				     const cip_ini_sect *sect,
+				     const cip_ini_file *file,
+				     void *post_parse_data, int *result);
+
 
 #endif	/* FREECUSD_H */

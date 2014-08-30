@@ -522,7 +522,7 @@ int fcd_lib_disk_index(char c)
 
 	for (i = 0; i < (int)fcd_conf_disk_count; ++i) {
 
-		if (c == fcd_conf_disk_names[i][FCD_DISK_NAME_SIZE - 2])
+		if (c == fcd_conf_disks[i].name[FCD_DISK_NAME_SIZE - 2])
 			return i;
 	}
 
