@@ -324,25 +324,19 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf, int warn,
 }
 
 /*
- * Called only from fcd_lib_cmd_child().  Sets the CLOEXEC flag on fd.  Returns
- * 0 on success, -1 on error.
+ * Called only from fcd_lib_cmd_child().  Sets the CLOEXEC flag on fd.  Aborts
+ * on error.
  */
-static int fcd_lib_child_set_cloexec(int fd)
+static void fcd_lib_child_set_cloexec(int fd)
 {
 	int current_flags;
 
 	current_flags = fcntl(fd, F_GETFD);
-	if (current_flags == -1) {
-		FCD_PERROR("fcntl");
-		return -1;
-	}
+	if (current_flags == -1)
+		FCD_PABORT("fcntl");
 
-	if (fcntl(fd, F_SETFD, current_flags | FD_CLOEXEC) == -1) {
-		FCD_PERROR("fcntl");
-		return -1;
-	}
-
-	return 0;
+	if (fcntl(fd, F_SETFD, current_flags | FD_CLOEXEC) == -1)
+		FCD_PABORT("fcntl");
 }
 
 /*
@@ -372,11 +366,10 @@ static void fcd_lib_cmd_child(int fd, char **cmd)
 
 	if (!fcd_err_foreground) {
 
-		if (fd == -1 && fcd_lib_child_set_cloexec(STDOUT_FILENO) == -1)
-			FCD_ABORT();
+		if (fd == -1)
+			fcd_lib_child_set_cloexec(STDOUT_FILENO);
 
-		if (fcd_lib_child_set_cloexec(STDERR_FILENO) == -1)
-			FCD_ABORT();
+		fcd_lib_child_set_cloexec(STDERR_FILENO);
 	}
 
 	execv(cmd[0], cmd + 1);
