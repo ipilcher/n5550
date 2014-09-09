@@ -1,6 +1,6 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
-Version:	0.2
+Version:	0.2.1
 Release:	1%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
@@ -65,6 +65,10 @@ rm -rf %{buildroot}
 %attr(0644,root,root) %doc LICENSE README
 
 %changelog
+* Mon Sep 08 2014 Ian Pilcher <arequipeno@gmail.com> - 0.2.1-1
+- Version 0.2.1
+- Fix freecusd error reporting between fork() and execv()
+
 * Tue Aug 12 2014 Ian Pilcher <arequipeno@gmail.com> - 0.2-1
 - EL7-compatible package
 
