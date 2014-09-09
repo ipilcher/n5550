@@ -45,6 +45,9 @@ extern void fcd_err_perror(const char *msg, const char *file, int line,
 			   int sev);
 extern void fcd_err_pt_err(const char *msg, int err, const char *file,
 			   int line, int sev);
+__attribute__((noreturn))
+extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
+
 
 #define FCD_RAW_STRINGIFY(x)	#x
 #define FCD_STRINGIFY(x)	FCD_RAW_STRINGIFY(x)
@@ -112,6 +115,8 @@ extern void fcd_err_pt_err(const char *msg, int err, const char *file,
 					abort(); \
 				} while (0)
 
+#define FCD_CHILD_PABORT(msg)	fcd_err_child_pabort((msg), __FILE__, __LINE__)
+
 /*
  * Array size macro shamelessly copied from the Linux kernel
  */
@@ -172,6 +177,9 @@ extern const char *fcd_conf_file_name;
 
 /* Detach from terminal?  Log to syslog or stderr? */
 extern int fcd_err_foreground;
+
+/* File descriptor used to log errors in fork()ed child (before exec) */
+extern int fcd_err_child_errfd;
 
 /* Set by SIGUSR1 handler in monitor/worker threads */
 extern __thread volatile sig_atomic_t fcd_thread_exit_flag;

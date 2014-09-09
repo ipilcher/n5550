@@ -333,10 +333,10 @@ static void fcd_lib_child_set_cloexec(int fd)
 
 	current_flags = fcntl(fd, F_GETFD);
 	if (current_flags == -1)
-		FCD_PABORT("fcntl");
+		FCD_CHILD_PABORT("fcntl");
 
 	if (fcntl(fd, F_SETFD, current_flags | FD_CLOEXEC) == -1)
-		FCD_PABORT("fcntl");
+		FCD_CHILD_PABORT("fcntl");
 }
 
 /*
@@ -361,7 +361,7 @@ static void fcd_lib_cmd_child(int fd, char **cmd)
 
 		/* CLOEXEC is NOT inherited by dup2'ed descriptor */
 		if (dup2(fd, STDOUT_FILENO) == -1)
-			FCD_PABORT("dup2");
+			FCD_CHILD_PABORT("dup2");
 	}
 
 	if (!fcd_err_foreground) {
@@ -374,7 +374,7 @@ static void fcd_lib_cmd_child(int fd, char **cmd)
 
 	execv(cmd[0], cmd + 1);
 
-	FCD_PABORT("execv");
+	FCD_CHILD_PABORT("execv");
 }
 
 /*

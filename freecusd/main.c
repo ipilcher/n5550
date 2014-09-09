@@ -17,6 +17,8 @@
 #include "freecusd.h"
 
 #include <sys/resource.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <stdarg.h>
 #include <locale.h>
 #include <string.h>
@@ -53,6 +55,11 @@ __thread volatile sig_atomic_t fcd_thread_exit_flag = 0;
 static const struct timespec fcd_main_sleep = {
 	.tv_sec		= 3,
 	.tv_nsec	= 0,
+};
+
+static const struct sockaddr_un fcd_main_log_addr = {
+	.sun_family	= AF_UNIX,
+	.sun_path	= "/dev/log",
 };
 
 static void fcd_main_sig_handler(int signum)
@@ -107,6 +114,23 @@ static void fcd_main_parse_args(int argc, char *argv[])
 			FCD_WARN("Unknown option: '%s'\n", argv[i]);
 		}
 	}
+}
+
+/*
+ * If not running in foreground mode, open a file descriptor to the syslog
+ * daemon that a forked child can use for (pre-exec) error reporting.
+ */
+static void fcd_main_child_log_open(void)
+{
+	static const struct sockaddr *addr =
+			(const struct sockaddr *)&fcd_main_log_addr;
+
+	fcd_err_child_errfd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fcd_err_child_errfd == -1)
+		FCD_PABORT("socket");
+
+	if (connect(fcd_err_child_errfd, addr, sizeof fcd_main_log_addr) == -1)
+		FCD_PABORT(fcd_main_log_addr.sun_path);
 }
 
 static void fcd_main_start_mon_threads(void)
@@ -242,6 +266,7 @@ int main(int argc, char *argv[])
 	}
 	else {
 		openlog("freecusd", LOG_PID, LOG_DAEMON);
+		fcd_main_child_log_open();
 		if (daemon(0, 0) == -1)
 			FCD_PABORT("daemon");
 	}
@@ -297,6 +322,8 @@ int main(int argc, char *argv[])
 
 	fcd_main_stop_mon_threads();
 	fcd_main_stop_thread(reaper_thread);
+	if (!fcd_err_foreground && close(fcd_err_child_errfd) == -1)
+		FCD_PERROR(fcd_main_log_addr.sun_path);
 
 	FCD_INFO("Exiting\n");
 	return 0;
