@@ -161,6 +161,7 @@ struct fcd_monitor {
 
 /* Config info about a RAID disk */
 struct fcd_raid_disk {
+	unsigned port_no;
 	int temp_warn;
 	int temp_crit;
 	bool temp_ignore;
@@ -274,6 +275,9 @@ extern int fcd_conf_disk_int_cb_help(cip_err_ctx *ctx,
 				     const cip_ini_sect *sect,
 				     const cip_ini_file *file,
 				     void *post_parse_data, int *result);
+
+/* RAID disk auto-detection - disk.c */
+extern int fcd_disk_detect(void);
 
 
 #endif	/* FREECUSD_H */

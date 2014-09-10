@@ -28,7 +28,7 @@ const char *fcd_conf_file_name = NULL;
 /*
  * RAID disk configuration
  */
-unsigned fcd_conf_disk_count = 0;
+unsigned fcd_conf_disk_count;
 
 struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT] = {
 
@@ -41,18 +41,6 @@ struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT] = {
 };
 
 /*
- * Default RAID disks
- */
-static char *fcd_conf_disk_names_values[] = {
-	"/dev/sdb", "/dev/sdc", "/dev/sdd", "/dev/sde", "/dev/sdf"
-};
-
-static const cip_str_list fcd_conf_disk_names_def = {
-	.values	= fcd_conf_disk_names_values,
-	.count	= FCD_ARRAY_SIZE(fcd_conf_disk_names_values),
-};
-
-/*
  * [freecusd] section schema skeleton
  */
 static int fcd_conf_raiddisks_cb();
@@ -62,8 +50,6 @@ static const cip_opt_info fcd_conf_freecusd_opts[] = {
 		.name		= "raid_disks",
 		.type		= CIP_OPT_TYPE_STR_LIST,
 		.post_parse_fn	= fcd_conf_raiddisks_cb,
-		.default_value	= &fcd_conf_disk_names_def,
-		.flags		= CIP_OPT_DEFAULT,
 	},
 	{	.name		= NULL		}
 };
@@ -299,6 +285,7 @@ static void fcd_conf_dump_raid_disks(void)
 
 	for (i = 0; i < fcd_conf_disk_count; ++i) {
 		printf("%s:\n", fcd_conf_disks[i].name);
+		printf("\tPort number: %u\n", fcd_conf_disks[i].port_no);
 		printf("\tS.M.A.R.T. monitor disabled: %s\n",
 		       fcd_conf_disks[i].smart_ignore ? "true" : "false");
 		printf("\tHDD temperature monitor disabled: %s\n",
@@ -323,6 +310,15 @@ void fcd_conf_parse(void)
 	cip_err_ctx ctx;
 	FILE *stream;
 	int ret;
+
+	ret = fcd_disk_detect();
+	if (ret < 1) {
+		FCD_WARN("Failed to auto-detect RAID disks\n");
+		fcd_conf_disk_count = 0;
+	}
+	else {
+		fcd_conf_disk_count = ret;
+	}
 
 	cip_err_ctx_init(&ctx);
 
