@@ -17,6 +17,7 @@
 #include "freecusd.h"
 
 #include <string.h>
+#include <limits.h>
 #include <errno.h>
 
 /*
@@ -28,7 +29,16 @@ const char *fcd_conf_file_name = NULL;
  * RAID disk configuration
  */
 unsigned fcd_conf_disk_count = 0;
-struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT];
+
+struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT] = {
+
+	/*
+	 * Used by fcd_conf_disk_idx() to determine whether the [freecusd]
+	 * section has been processed yet.  (Will be set to default/provided
+	 * value of hdd_temp_warn.)
+	 */
+	[0] = { .temp_warn = INT_MIN }
+};
 
 /*
  * Default RAID disks
@@ -156,8 +166,12 @@ int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
 
 	unsigned i;
 
-	if (fcd_conf_disk_count == 0)
-		return 1;		/* Defer until [freecusd] processed */
+	/*
+	 * Don't process any [raid_disk:*] settings until the [freecusd]
+	 * section has been processed.
+	 */
+	if (fcd_conf_disks[0].temp_warn == INT_MIN)
+		return 1;
 
 	if (sect == current_sect) {
 		*index = current_index;

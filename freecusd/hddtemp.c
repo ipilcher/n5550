@@ -82,6 +82,20 @@ static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
 	}
 };
 
+static int fcd_hddtemp_check_temp(cip_err_ctx *ctx, int temp)
+{
+	if (temp < -273) {
+		cip_err(ctx, "Invalid temperature (below absolute zero): %d",
+			temp);
+		return -1;
+	}
+
+	if (temp <= 0 || temp >= 1000)
+		cip_err(ctx, "Probably not a useful HDD temperature: %d", temp);
+
+	return 0;
+}
+
 static int fcd_hddtemp_freecusd_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 				   const cip_ini_sect *sect
 						__attribute__((unused)),
@@ -95,8 +109,8 @@ static int fcd_hddtemp_freecusd_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 	p = (int *)(value->value);
 	temp = *p;
 
-	if (temp <= 0 || temp >= 1000)
-		cip_err(ctx, "Probably not a useful HDD temperature: %d", temp);
+	if (fcd_hddtemp_check_temp(ctx, temp) == -1)
+		return -1;
 
 	for (i = 0; i < FCD_MAX_DISK_COUNT; ++i) {
 		p = fcd_conf_disk_member(post_parse_data, i);
@@ -118,8 +132,8 @@ static int fcd_hddtemp_raiddisk_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 	if (ret != 0)
 		return ret;
 
-	if (temp <= 0 || temp >= 1000)
-		cip_err(ctx, "Probably not a useful HDD temperature: %d", temp);
+	if (fcd_hddtemp_check_temp(ctx, temp) == -1)
+		return -1;
 
 	return 0;
 }
