@@ -20,6 +20,10 @@
 #include <fcntl.h>
 #include <time.h>
 
+/* See RETURN VALUES in smartctl(8) */
+#define FCD_SMART_FAIL_MASK	0x0f
+#define FCD_SMART_WARN_MASK	0xf0
+
 static char *fcd_smart_cmd[] = {
 	[0] = "/usr/sbin/smartctl",
 	[1] = "smartctl",
@@ -68,7 +72,7 @@ static void *fcd_smart_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
 	int disk_alerts[FCD_MAX_DISK_COUNT], pipe_fds[2];
-	int warn, status, i;
+	int fail, warn, status, i;
 	char buf[21];
 
 	if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
@@ -80,6 +84,7 @@ static void *fcd_smart_fn(void *arg)
 		memset(buf, ' ', sizeof buf);
 		memset(disk_alerts, 0, sizeof disk_alerts);
 		warn = 0;
+		fail = 0;
 
 		for (i = 0; i < (int)fcd_conf_disk_count; ++i)
 		{
@@ -92,18 +97,20 @@ static void *fcd_smart_fn(void *arg)
 			if (status == -3)
 				goto break_outer_loop;
 
-			if (status == 0) {
-				memcpy(buf + i * 3, "OK", 2);
+			if (status & FCD_SMART_FAIL_MASK) {
+				memset(buf + i * 4, '*', 2);
+				disk_alerts[i] = 1;
+				fail = 1;
+				warn = 0;
 			}
-			else if (status == 2) {
-				memset(buf + i * 3, '?', 2);
+			else if (status & FCD_SMART_WARN_MASK) {
+				memset(buf + i * 4, '?', 2);
+				disk_alerts[i] = 1;
+				warn = !fail;
 			}
 			else {
-				memset(buf + i * 3, '*', 2);
-				disk_alerts[i] = 1;
-				warn = 1;
+				memcpy(buf + i * 4, "OK", 2);
 			}
-
 		}
 
 		fcd_lib_set_mon_status(mon, buf, warn, 0, disk_alerts);
