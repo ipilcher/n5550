@@ -41,83 +41,6 @@ struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT] = {
 };
 
 /*
- * [freecusd] section schema skeleton
- */
-static int fcd_conf_raiddisks_cb();
-
-static const cip_opt_info fcd_conf_freecusd_opts[] = {
-	{
-		.name		= "raid_disks",
-		.type		= CIP_OPT_TYPE_STR_LIST,
-		.post_parse_fn	= fcd_conf_raiddisks_cb,
-	},
-	{	.name		= NULL		}
-};
-
-static const cip_sect_info fcd_conf_freecusd_sect = {
-	.name		= "freecusd",
-	.options	= fcd_conf_freecusd_opts,
-	.flags		= CIP_SECT_CREATE,
-};
-
-/*
- * raid_disks post-parse callback
- */
-static int fcd_conf_raiddisks_cb(cip_err_ctx *ctx, const cip_ini_value *value,
-				 const cip_ini_sect *sect
-						__attribute__((unused)),
-				 const cip_ini_file *file
-						__attribute__((unused)),
-				 void *post_parse_data __attribute__((unused)))
-{
-	const cip_str_list *list;
-	const char *disk;
-	unsigned i, j;
-
-	list = (const cip_str_list *)(value->value);
-	if (list->count < 1 || list->count > FCD_MAX_DISK_COUNT) {
-		cip_err(ctx,
-			"Number of disks (%u) outside valid range (1 - %d)",
-			list->count, FCD_MAX_DISK_COUNT);
-		return -1;
-	}
-
-	for (i = 0; i < list->count; ++i) {
-
-		disk = list->values[i];
-
-		if (strlen(disk) != FCD_DISK_NAME_SIZE - 1 	||
-			strncmp(disk, "/dev/sd",
-				FCD_DISK_NAME_SIZE - 2) != 0 	||
-			disk[FCD_DISK_NAME_SIZE - 2] < 'a' 	||
-			disk[FCD_DISK_NAME_SIZE - 2] > 'z'	) {
-
-			cip_err(ctx, "Invalid disk: %s", list->values[i]);
-			return -1;
-		}
-
-		for (j = 0; j < i; ++j) {
-
-			if (disk[FCD_DISK_NAME_SIZE - 2] ==
-				list->values[j][FCD_DISK_NAME_SIZE - 2]) {
-
-				cip_err(ctx, "Duplicate disk: %s", disk);
-				return -1;
-			}
-		}
-	}
-
-	for (i = 0; i < list->count; ++i) {
-		memcpy(fcd_conf_disks[i].name, list->values[i],
-		       FCD_DISK_NAME_SIZE);
-	}
-
-	fcd_conf_disk_count = list->count;
-
-	return 0;
-}
-
-/*
  * Post-parse callback for monitor enable/disable booleans
  */
 int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
@@ -350,8 +273,8 @@ void fcd_conf_parse(void)
 	if (file_schema == NULL)
 		FCD_FATAL("%s\n", cip_last_err(&ctx));
 
-	freecusd_schema = cip_sect_schema_new2(&ctx, file_schema,
-					       &fcd_conf_freecusd_sect);
+	freecusd_schema = cip_sect_schema_new1(&ctx, file_schema, "freecusd",
+					       CIP_SECT_CREATE);
 	if (freecusd_schema == NULL)
 		FCD_FATAL("%s\n", cip_last_err(&ctx));
 
