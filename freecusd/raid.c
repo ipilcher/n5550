@@ -1005,13 +1005,13 @@ static void *fcd_raid_fn(void *arg)
 
 		ret = fcd_raid_read_file(fd, &mdstat_buf, &mdstat_size);
 		if (ret == -3)
-			continue;
+			break;
 		if (ret < 0)
 			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
 
 		ret = fcd_raid_parse_mdstat(mdstat_buf, pipe_fds);
 		if (ret == -3)
-			continue;
+			break;
 		if (ret < 0)
 			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
 

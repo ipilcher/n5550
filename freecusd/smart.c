@@ -90,7 +90,7 @@ static void *fcd_smart_fn(void *arg)
 
 			status = fcd_smart_status(i, pipe_fds, mon);
 			if (status == -3)
-				goto continue_outer_loop;
+				goto break_outer_loop;
 
 			if (status == 0) {
 				memcpy(buf + i * 3, "OK", 2);
@@ -108,13 +108,13 @@ static void *fcd_smart_fn(void *arg)
 
 		fcd_lib_set_mon_status(mon, buf, warn, 0, disk_alerts);
 
-continue_outer_loop:
 		i = fcd_lib_monitor_sleep(1800);
 		if (i == -1)
 			fcd_lib_disable_cmd_mon(mon, pipe_fds, NULL);
 
 	} while (i == 0);
 
+break_outer_loop:
 	fcd_proc_close_pipe(pipe_fds);
 	pthread_exit(NULL);
 }

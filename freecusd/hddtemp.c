@@ -262,7 +262,7 @@ static void *fcd_hddtemp_fn(void *arg)
 			temps[i] = INT_MIN;
 
 		if (fcd_hddtemp_exec(&cmd_buf, &buf_size, pipe_fds, mon) == -3)
-			continue;
+			break;
 
 		fcd_hddtemp_parse(cmd_buf, temps, pipe_fds, mon);
 
