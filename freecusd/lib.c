@@ -294,7 +294,7 @@ void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon, const int *pipe_fds,
 void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf, int warn,
 			    int fail, const int *disks)
 {
-	unsigned i;
+	unsigned i, led;
 	int ret;
 
 	ret = pthread_mutex_lock(&mon->mutex);
@@ -312,9 +312,11 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf, int warn,
 
 		for (i = 0; i < fcd_conf_disk_count; ++i) {
 
+			led = fcd_conf_disks[i].port_no - 2;
+
 			fcd_alert_update(disks[i] ? FCD_ALERT_SET_REQ :
 						    FCD_ALERT_CLR_REQ,
-					 &mon->disk_alerts[i]);
+					 &mon->disk_alerts[led]);
 		}
 	}
 
