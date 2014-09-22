@@ -144,8 +144,8 @@ int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
 /*
  * Finds the RAID disk index corresponding to a [raid_disk:*] instance
  */
-int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
-		      const cip_ini_sect *sect)
+static int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
+			     const cip_ini_sect *sect)
 {
 	static const cip_ini_sect *current_sect = NULL;
 	static unsigned current_index;

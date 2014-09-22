@@ -264,8 +264,6 @@ extern int fcd_lib_disk_index(char c);
 
 /* Config file parsing - conf.c */
 extern void fcd_conf_parse(void);
-extern int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
-			     const cip_ini_sect *sect);
 extern int fcd_conf_disk_bool_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 				 const cip_ini_sect *sect,
 				 const cip_ini_file *file,
