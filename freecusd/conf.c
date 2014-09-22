@@ -152,7 +152,10 @@ int fcd_conf_disk_bool_cb(cip_err_ctx *ctx __attribute__((unused)),
 }
 
 /*
- * Post-parse callback helper for disk-specific integers
+ * Post-parse callback helper for disk-specific integers.
+ *
+ * Note that this function may return 0 without setting *result in the "missing
+ * disk" case.
  */
 int fcd_conf_disk_int_cb_help(cip_err_ctx *ctx, const cip_ini_value *value,
 			      const cip_ini_sect *sect,

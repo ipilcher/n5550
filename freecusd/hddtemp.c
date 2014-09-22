@@ -127,6 +127,13 @@ static int fcd_hddtemp_raiddisk_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 {
 	int ret, temp;
 
+	/*
+	 * If we're in the [raid_disk:X] section for a missing disk,
+	 * fcd_conf_disk_int_cb_help() will return 0, but temp won't be changed.
+	 * Set it to something that won't trigger a spurious warning/error.
+	 */
+	temp = 25;
+
 	ret = fcd_conf_disk_int_cb_help(ctx, value, sect, file, post_parse_data,
 					&temp);
 	if (ret != 0)
