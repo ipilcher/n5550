@@ -142,7 +142,14 @@ int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
 }
 
 /*
- * Finds the RAID disk index corresponding to a [raid_disk:*] instance
+ * Finds the RAID disk index corresponding to a [raid_disk:X] instance.  Returns
+ * -1 on error (invalid disk number) or 1 if the [freecusd] section has not yet
+ * been processed.  If the disk number (X) is valid, and the [freecusd] section
+ * has been processed, 0 is returned and either the index or UINT_MAX is written
+ * to *index; UINT_MAX indicates that no disk was detected in position X.
+ *
+ * Thus callers must check both the return value of this function and the value
+ * returned in *index.
  */
 static int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
 			     const cip_ini_sect *sect)
@@ -151,6 +158,7 @@ static int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
 	static unsigned current_index;
 
 	unsigned i;
+	char disk;
 
 	/*
 	 * Don't process any [raid_disk:*] settings until the [freecusd]
@@ -159,24 +167,40 @@ static int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
 	if (fcd_conf_disks[0].temp_warn == INT_MIN)
 		return 1;
 
+	/*
+	 * Options in an instance of a multi-instance section are called
+	 * sequentially, so it makes sense to "cache" this.  It also prevents
+	 * issuing multiple warnings for a missing disk's [raid_disk:X] section.
+	 */
 	if (sect == current_sect) {
 		*index = current_index;
 		return 0;
 	}
 
-	for (i = 0; i < fcd_conf_disk_count; ++i) {
-
-		if (strcmp(sect->node.name, fcd_conf_disks[i].name) == 0) {
-			current_sect = sect;
-			current_index = i;
-			*index = i;
-			return 0;
-		}
+	disk = sect->node.name[0];
+	if (disk < '1' || disk > '5' || sect->node.name[1] != 0) {
+		cip_err(ctx, "Invalid disk number: %s (must be 1-5)",
+			sect->node.name);
+		return -1;
 	}
 
-	cip_err(ctx, "Disk (%s) is not a member of raid_disks",
-		sect->node.name);
-	return -1;
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
+
+		/* Disk 1 is on port 2, etc.  (Port 1 is the DOM.) */
+		if ((unsigned)(disk - '0') == fcd_conf_disks[i].port_no - 1)
+			break;
+	}
+
+	if (i == fcd_conf_disk_count) {
+		cip_err(ctx, "Ignoring section: [raid_disk:%s]: No such disk",
+			sect->node.name);
+		i = UINT_MAX;
+	}
+
+	current_sect = sect;
+	current_index = i;
+	*index = i;
+	return 0;
 }
 
 /*
@@ -192,7 +216,7 @@ int fcd_conf_disk_bool_cb(cip_err_ctx *ctx __attribute__((unused)),
 	int ret;
 
 	ret = fcd_conf_disk_idx(ctx, &i, sect);
-	if (ret != 0)
+	if (ret != 0 || i == UINT_MAX)
 		return ret;
 
 	p = (bool *)(value->value);
@@ -216,7 +240,7 @@ int fcd_conf_disk_int_cb_help(cip_err_ctx *ctx, const cip_ini_value *value,
 	int i, *p;
 
 	i = fcd_conf_disk_idx(ctx, &u, sect);
-	if (i != 0)
+	if (i != 0 || u == UINT_MAX)
 		return i;
 
 	p = (int *)(value->value);
