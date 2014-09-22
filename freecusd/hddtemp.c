@@ -243,7 +243,7 @@ static void *fcd_hddtemp_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
 	int ret, i, temps[FCD_MAX_DISK_COUNT], pipe_fds[2];
-	int max, warn, fail, disk_alerts[FCD_MAX_DISK_COUNT];
+	int warn, fail, disk_alerts[FCD_MAX_DISK_COUNT];
 	char *b, buf[21], *cmd_buf;
 	size_t buf_size;
 
@@ -257,7 +257,6 @@ static void *fcd_hddtemp_fn(void *arg)
 	buf_size = 0;
 
 	do {
-		memset(buf, ' ', sizeof buf);
 		for (i = 0; i < (int)fcd_conf_disk_count; ++i)
 			temps[i] = INT_MIN;
 
@@ -266,41 +265,51 @@ static void *fcd_hddtemp_fn(void *arg)
 
 		fcd_hddtemp_parse(cmd_buf, temps, pipe_fds, mon);
 
+		memset(buf, ' ', sizeof buf);
 		memset(disk_alerts, 0, sizeof disk_alerts);
-		max = 0;
+		warn = 0;
+		fail = 0;
 
-		for (i = 0, b = buf; i < (int)fcd_conf_disk_count; ++i) {
+		for (i = 0; i < (int)fcd_conf_disk_count; ++i) {
+
+			b = buf + 4 * (fcd_conf_disks[i].port_no - 2);
 
 			if (fcd_conf_disks[i].temp_ignore) {
-				memset(b, '.', 2);
-				b += 3;
+				memset(b, '.', 3);
+				continue;
 			}
-			else if (temps[i] >= -99 && temps[i] <= 999) {
 
-				disk_alerts[i] =
-				      (temps[i] >= fcd_conf_disks[i].temp_warn);
-				if (temps[i] > max)
-					max = temps[i];
-
-				ret = sprintf(b, "%d ", temps[i]);
+			if (temps[i] == INT_MIN) {
+				memset(b, '?', 3);
+			}
+			else if (temps[i] < -99) {
+				memcpy(b, "-**", 3);
+			}
+			else if (temps[i] > 999) {
+				memset(b, '*', 3);
+			}
+			else {
+				ret = sprintf(b, "%d", temps[i]);
 				if (ret == EOF) {
 					FCD_PERROR("sprintf");
 					fcd_lib_disable_cmd_mon(mon, pipe_fds,
 								cmd_buf);
 				}
-				b += ret;
+
+				b[ret] = ' ';	/* sprintf 0-terminates */
 			}
-			else {
-				if (temps[i] == INT_MIN)
-					memset(b, '?', 2);
-				else
-					memset(b, '*', 2);
-				b += 3;
+
+			if (temps[i] >= fcd_conf_disks[i].temp_crit ||
+							temps[i] <= 0) {
+				disk_alerts[i] = 1;
+				fail = 1;
+				warn = 0;
+			}
+			else if (temps[i] >= fcd_conf_disks[i].temp_warn) {
+				disk_alerts[i] = 1;
+				warn = !fail;
 			}
 		}
-
-		fail = (max >= fcd_conf_disks[0].temp_crit);
-		warn = fail ? 0 : (max >= fcd_conf_disks[0].temp_warn);
 
 		fcd_lib_set_mon_status(mon, buf, warn, fail, disk_alerts);
 
