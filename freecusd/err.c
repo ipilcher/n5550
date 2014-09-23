@@ -202,6 +202,8 @@ static int fcd_err_txt(void)
 
 void fcd_err_child_pabort(const char *msg, const char *file, int line)
 {
+	fcd_err_len = 0;
+
 	if (!fcd_err_foreground) {
 
 		/* syslog header without timestamp and hostname */
