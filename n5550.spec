@@ -1,6 +1,6 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
-Version:	0.2.1
+Version:	0.3
 Release:	1%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
@@ -19,7 +19,7 @@ LCD display and LEDs to report system status.
 
 %build
 cd freecusd
-gcc -Os -Wall -Wextra -pthread -lcip -o freecusd *.c
+gcc -Os -Wall -Wextra -pthread -o freecusd *.c -lcip
 
 %install
 rm -rf %{buildroot}
@@ -65,6 +65,11 @@ rm -rf %{buildroot}
 %attr(0644,root,root) %doc LICENSE README
 
 %changelog
+* Mon Sep 22 2014 Ian Pilcher <arequipeno@gmail.com> - 0.3-1
+- Version 0.3
+- freecusd: auto-detect RAID disks
+- freecusd: make gcc command line work with "as needed" linking
+
 * Mon Sep 08 2014 Ian Pilcher <arequipeno@gmail.com> - 0.2.1-1
 - Version 0.2.1
 - Fix freecusd error reporting between fork() and execv()
