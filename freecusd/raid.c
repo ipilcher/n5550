@@ -943,7 +943,6 @@ static int fcd_raid_setup(int *pipe_fds, int *mdstat_fd, char **mdstat_buf,
 static void fcd_raid_result(int *ok, int *warn, int *fail, int *disks,
 			    const struct fcd_raid_array *array)
 {
-	enum fcd_raid_dev_stat status;
 	unsigned i;
 
 	switch (array->array_status) {
@@ -971,14 +970,28 @@ static void fcd_raid_result(int *ok, int *warn, int *fail, int *disks,
 
 	for (i = 0; i < fcd_conf_disk_count; ++i) {
 
-		status = array->dev_status[i];
+		switch (array->dev_status[i]) {
 
-		if (status == FCD_RAID_DEV_FAILED ||
-				status == FCD_RAID_DEV_MISSING ||
-				(status == FCD_RAID_DEV_UNKNOWN &&
-					array->ideal_devs ==
-						fcd_conf_disk_count)) {
-			++disks[i];
+			case FCD_RAID_DEV_UNKNOWN:
+
+				/*
+				 * We have no status for this disk, but we know
+				 * that the array is at least degraded.  We can
+				 * conclude that this is disk is part of the
+				 * problem ONLY if all RAID disks are supposed
+				 * to be members of the array.
+				 */
+				if (array->ideal_devs != fcd_conf_disk_count)
+					break;
+				/* else fall through */
+
+			case FCD_RAID_DEV_FAILED:
+			case FCD_RAID_DEV_MISSING:
+
+				++disks[i];
+
+			default:
+				break;
 		}
 	}
 }
