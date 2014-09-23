@@ -198,8 +198,8 @@ struct fcd_raid_array {
 	char name[FCD_RAID_DEVNAME_SIZE];
 	int sysfs_fd;
 	int transient;
-	int ideal_devs;
-	int current_devs;
+	unsigned ideal_devs;
+	unsigned current_devs;
 	enum fcd_raid_type type;
 	enum fcd_raid_arr_stat array_status;
 	enum fcd_raid_dev_stat dev_status[FCD_MAX_DISK_COUNT];
@@ -977,7 +977,7 @@ static void fcd_raid_result(int *ok, int *warn, int *fail, int *disks,
 				status == FCD_RAID_DEV_MISSING ||
 				(status == FCD_RAID_DEV_UNKNOWN &&
 					array->ideal_devs ==
-						(int)fcd_conf_disk_count)) {
+						fcd_conf_disk_count)) {
 			++disks[i];
 		}
 	}
