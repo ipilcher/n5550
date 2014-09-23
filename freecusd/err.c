@@ -232,7 +232,11 @@ truncated:
 	fcd_err_lit("...\n");
 
 write_msg:
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-result"
 	write(fcd_err_child_errfd, fcd_err_buf, fcd_err_len);
+#pragma GCC diagnostic pop
 
 	abort();
 }
