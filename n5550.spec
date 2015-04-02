@@ -1,6 +1,6 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
-Version:	0.3
+Version:	0.3.1
 Release:	1%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
@@ -65,6 +65,10 @@ rm -rf %{buildroot}
 %attr(0644,root,root) %doc LICENSE README
 
 %changelog
+* Wed Apr 01 2015 Ian Pilcher <arequipeno@gmail.com> - 0.3.1-1
+- Version 0.3.1
+- dracut: ensure libahci module is included in initramfs
+
 * Mon Sep 22 2014 Ian Pilcher <arequipeno@gmail.com> - 0.3-1
 - Version 0.3
 - freecusd: auto-detect RAID disks
