@@ -6,8 +6,8 @@ For RHEL/CentOS/Scientific Linux 7, see the QuickStart in the wiki:
 
   https://github.com/ipilcher/n5550/wiki/QuickStart-for-CentOS-7
   
-For RHEL/CentOS/Scientific Linux 6, use kernel-lt from ELRepo.  The RPM will
-probably need to be modified slightly to work on EL6.
+For RHEL/CentOS/Scientific Linux 6, use kernel-lt from ELRepo.  The n5550 RPM
+will probably need to be modified slightly to work on EL6.
 
 
 Kernel Modules
