@@ -1,9 +1,13 @@
 Thecus N5550 Hardware Support
-Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
-=================================================
+Copyright 2013-2015 Ian Pilcher <arequipeno@gmail.com>
+======================================================
 
-For RHEL/CentOS/Scientific Linux 6.  Requires kernel-ml (and kernel-ml-devel)
-from elrepo.
+For RHEL/CentOS/Scientific Linux 7, see the QuickStart in the wiki:
+
+  https://github.com/ipilcher/n5550/wiki/QuickStart-for-CentOS-7
+  
+For RHEL/CentOS/Scientific Linux 6, use kernel-lt from ELRepo.  The RPM will
+probably need to be modified slightly to work on EL6.
 
 
 Kernel Modules
@@ -22,16 +26,34 @@ n5550_ahci_leds - "Hooks" into libahci module to provide LED triggers for disk
 n5550_board - Sets up chipset, LEDs, GPIOs, etc.  Disk activity LEDs have
 	default triggers, so they should "just work" once both modules are
 	loaded.
+	
+	
+Monitoring Daemon
+-----------------
+
+freecusd - Monitors the health of the NAS and displays state on front-panel
+	LCD and LEDs.  Configured via /etc/freecusd.conf.
 
 
-Configuration Files
--------------------
+Operating System Integration
+----------------------------
 
-modprobe_n5550.conf - Copy to /etc/modprobe.d/n5550.conf.  Makes modprobe load
-	n5550_ahci_leds whenever it loads libahci.
+/usr/src/n5550/modules - Kernel module source code and makefile
 
-dracut_n5550.conf - Copy to /etc/dracut.conf.d/n5550.conf.  Makes dracut
-	include n5550_ahci_leds module in initramfs.
+/usr/lib/dracut/modules.d/99n5550 - dracut module to automatically build kernel
+	modules (if needed) when building initial RAM-disk.  (Doing this with a
+	dracut module, rather than DKMS, avoids building every initial RAM-disk
+	twice, which takes a long time on an Atom.)
+
+/usr/lib/dracut/dracut.conf.d/n5550.conf - dracut configuration file to ensure
+	required kernel modules are included in initial RAM-disk
+	
+/usr/lib/modprobe.d/n5550.conf - Ensures that n5550_ahci_leds is loaded as soon
+	as libahci (before any other module that uses libahci).  Also configures
+	system fan PWM.
+	
+/usr/lib/modules-load.d/n5550.conf - Ensures that n5550_board and it87 kernel
+	modules are loaded
 
 
 LCD
@@ -52,5 +74,5 @@ running, and they are readable via GPIO pins on one of the PCA9532 LED dimmers
 
 To do this, remove the 3 jumpers from the block and shift the button module
 ribbon cable from its normal connector onto the jumper block.  (After doing
-this, the Thecus firmware will not function properly ... unless someone figures
-out the proper button to hold down while it is booting.)
+this, the Thecus firmware will not be able to identify your NAS module, so the
+jumpers should be replaced before booting the Thecus firmware.)
