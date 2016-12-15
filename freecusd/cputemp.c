@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -41,9 +41,14 @@ static const cip_opt_info fcd_cputemp_opts[] = {
 	{	.name			= NULL		}
 };
 
-static const char *fcd_cputemp_input[2] = {
+static const char *fcd_cputemp_input_old[2] = {
 	"/sys/devices/platform/coretemp.0/temp2_input",
 	"/sys/devices/platform/coretemp.0/temp3_input"
+};
+
+static const char *fcd_cputemp_input_new[2] = {
+	"/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp2_input",
+	"/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp3_input"
 };
 
 /*
@@ -94,8 +99,14 @@ static void *fcd_cputemp_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
 	int warn, fail, i, ret, max, temps[2];
+	const char **fcd_cputemp_input;
 	char buf[21];
 	FILE *fps[2];
+
+	if (access(fcd_cputemp_input_new[0], F_OK) == 0)
+		fcd_cputemp_input = fcd_cputemp_input_new;
+	else
+		fcd_cputemp_input = fcd_cputemp_input_old;
 
 	for (i = 0; i < 2; ++i) {
 		fps[i] = fopen(fcd_cputemp_input[i], "re");
