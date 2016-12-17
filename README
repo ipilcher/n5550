@@ -52,8 +52,10 @@ Operating System Integration
 	as libahci (before any other module that uses libahci).  Also configures
 	system fan PWM.
 	
-/usr/lib/modules-load.d/n5550.conf - Ensures that n5550_board and it87 kernel
-	modules are loaded
+/usr/lib/modules-load.d/n5550.conf - Ensures it87 kernel module is loaded
+
+/usr/lib/udev/rules.d/99-n5550.rules - Triggers load of n5550_board module once
+	gpio_ich module has finished loading
 
 
 LCD

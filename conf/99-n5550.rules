@@ -1,0 +1,1 @@
+ACTION=="add", DEVPATH=="/devices/pci0000:00/0000:00:1f.0/gpio_ich.1.auto/gpio/gpiochip195", RUN+="/usr/sbin/modprobe n5550_board"
