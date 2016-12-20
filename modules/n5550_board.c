@@ -22,7 +22,7 @@
 #include <linux/pci.h>
 #include <linux/gpio.h>
 
-#define N5550_ICH_GPIO_BASE_DEFAULT	451
+#define N5550_ICH_GPIO_BASE_DEFAULT	195
 #define N5550_PCA9532_1_GPIO_BASE	16
 #define N5550_BOARD_ID			2
 
