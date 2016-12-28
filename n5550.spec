@@ -1,6 +1,6 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
-Version:	0.4
+Version:	0.5
 Release:	1%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
@@ -70,6 +70,10 @@ rm -rf %{buildroot}
 %attr(0644,root,root) %doc LICENSE README
 
 %changelog
+* Wed Dec 28 2016 Ian Pilcher <arequipeno@gmail.com> - 0.5-1
+- Version 0.5
+- freecusd: Add mutex to coordinate HDD temp & SMART threads
+
 * Sat Dec 17 2016 Ian Pilcher <arequipeno@gmail.com> - 0.4-1
 - Version 0.4
 - freecusd: Handle new coretemp sysfs path
