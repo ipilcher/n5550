@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -523,4 +523,34 @@ int fcd_lib_disk_index(char c)
 	}
 
 	return -1;
+}
+
+/*
+ * Mutex to prevent HDD temperature & S.M.A.R.T. threads from stepping on each
+ * other
+ */
+static pthread_mutex_t fcd_lib_disk_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/*
+ * Locks the disk mutex
+ */
+void fcd_lib_disk_mutex_lock(void)
+{
+	int ret;
+
+	ret = pthread_mutex_lock(&fcd_lib_disk_mutex);
+	if (ret != 0)
+		FCD_PT_ABRT("pthread_mutex_lock", ret);
+}
+
+/*
+ * Unlocks the disk mutex
+ */
+void fcd_lib_disk_mutex_unlock(void)
+{
+	int ret;
+
+	ret = pthread_mutex_unlock(&fcd_lib_disk_mutex);
+	if (ret != 0)
+		FCD_PT_ABRT("pthread_mutex_unlock", ret);
 }

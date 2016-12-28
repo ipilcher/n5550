@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -170,8 +170,10 @@ static int fcd_hddtemp_exec(char **cmd_buf, size_t *buf_size,
 	timeout.tv_sec = 5;
 	timeout.tv_nsec = 0;
 
+	fcd_lib_disk_mutex_lock();
 	ret = fcd_lib_cmd_output(&status, fcd_hddtemp_cmd, cmd_buf, buf_size,
 				 FCD_HDDTEMP_BUF_MAX, &timeout, pipe_fds);
+	fcd_lib_disk_mutex_unlock();
 
 	switch (ret) {
 

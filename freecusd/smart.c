@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -56,7 +56,9 @@ static int fcd_smart_status(int disk, const int *pipe_fds,
 
 	fcd_smart_cmd[6] = fcd_conf_disks[disk].name;
 
+	fcd_lib_disk_mutex_lock();
 	status = fcd_lib_cmd_status(fcd_smart_cmd, &timeout, pipe_fds);
+	fcd_lib_disk_mutex_unlock();
 
 	switch (status) {
 		case -3:	return -3;

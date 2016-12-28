@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -261,6 +261,8 @@ __attribute__((noreturn))
 extern void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon,
 				    const int *pipe_fds, char *buf);
 extern int fcd_lib_disk_index(char c);
+extern void fcd_lib_disk_mutex_lock(void);
+extern void fcd_lib_disk_mutex_unlock(void);
 
 /* Config file parsing - conf.c */
 extern void fcd_conf_parse(void);
