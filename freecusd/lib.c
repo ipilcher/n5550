@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2016 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016-2017 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -247,11 +247,7 @@ ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
 	return total;
 }
 
-/*
- * Called by a monitor thread to disable itself when an error occurs.  Never
- * returns.
- */
-void fcd_lib_disable_monitor(struct fcd_monitor *mon)
+static void fcd_lib_disable(struct fcd_monitor *const mon)
 {
 	static const char disabled_msg[20] = "ERROR: NOT AVAILABLE";
 	int ret;
@@ -268,13 +264,37 @@ void fcd_lib_disable_monitor(struct fcd_monitor *mon)
 	ret = pthread_mutex_unlock(&mon->mutex);
 	if (ret != 0)
 		FCD_PT_ABRT("pthread_mutex_unlock", ret);
+}
 
+/*
+ * Called by a monitor thread to disable a "slave" monitor.
+ */
+void fcd_lib_disable_slave(struct fcd_monitor *mon)
+{
+	if (mon->monitor_fn != 0)
+		FCD_ABORT("%s is not a slave\n", mon->name);
+
+	fcd_lib_disable(mon);
+}
+
+/*
+ * Called by a monitor thread to disable itself when an error occurs.
+ *
+ * Never returns.
+ */
+void fcd_lib_disable_monitor(struct fcd_monitor *mon)
+{
+	if (mon->monitor_fn == 0)
+		FCD_ABORT("%s is a slave\n", mon->name);
+
+	fcd_lib_disable(mon);
 	pthread_exit(NULL);
 }
 
 /*
  * Called by a monitor thread to clean up child process communication resources
  * (reaper thread pipe and buffer) and disable itself when an error occurs.
+ *
  * Never returns.
  *
  * NOTE: buf may be NULL

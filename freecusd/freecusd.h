@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2016 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016-2017 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -257,6 +257,7 @@ extern int fcd_lib_cmd_status(char **cmd, struct timespec *timeout,
 			      const int *pipe_fds);
 __attribute__((noreturn))
 extern void fcd_lib_disable_monitor(struct fcd_monitor *mon);
+extern void fcd_lib_disable_slave(struct fcd_monitor *mon);
 __attribute__((noreturn))
 extern void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon,
 				    const int *pipe_fds, char *buf);

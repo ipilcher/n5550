@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2017 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -38,8 +38,8 @@ struct fcd_monitor *fcd_monitors[] = {
 	&fcd_loadavg_monitor,
 	&fcd_cputemp_monitor,
 	&fcd_sysfan_monitor,
-	&fcd_hddtemp_monitor,
 	&fcd_smart_monitor,
+	&fcd_hddtemp_monitor,		/* "slave" of the S.M.A.R.T. monitor */
 	&fcd_raid_monitor,
 	NULL
 };
