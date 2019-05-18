@@ -1,11 +1,11 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
-Version:	0.5
+Version:	0.6
 Release:	1%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
 Requires:	kernel-plus-devel gcc make
-Requires:	/usr/sbin/mdadm /usr/sbin/hddtemp /usr/sbin/smartctl
+Requires:	/usr/sbin/mdadm
 BuildRequires:	gcc libcip-devel
 
 %description
@@ -19,13 +19,16 @@ LCD display and LEDs to report system status.
 
 %build
 cd freecusd
-gcc -Os -Wall -Wextra -pthread -o freecusd *.c -lcip
+gcc -std=gnu99 -Os -Wall -Wextra -pthread -o freecusd *.c -lcip
+gcc -std=gnu99 -Os -Wall -Wextra -pthread -o helper smart/helper.c -latasmart
 
 %install
 rm -rf %{buildroot}
 # Monitoring daemon
 mkdir -p %{buildroot}/usr/bin
 cp freecusd/freecusd %{buildroot}/usr/bin/
+mkdir -p %{buildroot}/usr/libexec
+cp freecusd/helper %{buildroot}/usr/libexec/freecusd-smart-helper
 mkdir -p %{buildroot}/usr/lib/systemd/system
 cp freecusd/freecusd.service %{buildroot}/usr/lib/systemd/system/
 mkdir %{buildroot}/etc
@@ -52,6 +55,7 @@ rm -rf %{buildroot}
 
 %files
 %attr(0755,root,root) /usr/bin/freecusd
+%attr(0755,root,root) /usr/libexec/freecusd-smart-helper
 %attr(0644,root,root) /usr/lib/systemd/system/freecusd.service
 %attr(0644,root,root) %config /etc/freecusd.conf
 %attr(0755,root,root) %dir /usr/src/n5550
@@ -67,9 +71,15 @@ rm -rf %{buildroot}
 %attr(0755,root,root) /usr/lib/dracut/modules.d/99n5550/installkernel
 %attr(0755,root,root) /usr/lib/dracut/modules.d/99n5550/install
 %attr(0644,root,root) /usr/lib/dracut/dracut.conf.d/n5550.conf
-%attr(0644,root,root) %doc LICENSE README
+%doc LICENSE README
 
 %changelog
+* Sat May 18 2019 Ian Pilcher <arequipeno@gmail.com> - 0.6-1
+* Version 0.6
+- Combine S.M.A.R.T. and HDD temp monitors
+- Use libatasmart-based helper to read HDD health & temp
+- Remove hddtemp & smartctl dependencies
+
 * Wed Dec 28 2016 Ian Pilcher <arequipeno@gmail.com> - 0.5-1
 - Version 0.5
 - freecusd: Add mutex to coordinate HDD temp & SMART threads
