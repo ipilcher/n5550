@@ -143,6 +143,15 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 #define FCD_FAN_MAX_HYST	0x04	/* above fan max hysteresis threshold */
 #define FCD_FAN_MAX_ON		0x08	/* at or above fan max on threshold */
 
+/* Compute PWM flags from a temperature and a set of thresholds */
+#define FCD_PWM_TEMP_FLAGS(temp, max_on, max_hyst, high_on, high_hyst)	\
+	(								\
+		((temp) >= (max_on)) * FCD_FAN_MAX_ON		| 	\
+		((temp) > (max_hyst)) * FCD_FAN_MAX_HYST	|	\
+		((temp) >= (high_on)) * FCD_FAN_HIGH_ON		|	\
+		((temp) > (high_hyst)) * FCD_FAN_HIGH_HYST		\
+	)
+
 /* Fan PWM states */
 enum fcd_pwm_state {
 	FCD_PWM_NORMAL = 0,
