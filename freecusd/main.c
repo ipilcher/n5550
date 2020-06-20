@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2017 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2017, 2020 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -25,6 +25,8 @@
 #include <errno.h>
 
 static struct fcd_monitor fcd_main_logo = {
+	/* see https://github.com/ipilcher/n5550/issues/15 */
+	.mutex		= PTHREAD_MUTEX_INITIALIZER,
 	.monitor_fn	= 0,
 	.enabled	= true,
 	.buf		= "....."
@@ -234,22 +236,16 @@ static void fcd_main_read_monitor(int tty_fd, struct fcd_monitor *mon)
 
 	if (mon->enabled) {
 
-		if (mon->monitor_fn != 0) {
-			ret = pthread_mutex_lock(&mon->mutex);
-			if (ret != 0)
-				FCD_PT_ABRT("pthread_mutex_lock", ret);
-		}
+		ret = pthread_mutex_lock(&mon->mutex);
+		if (ret != 0)
+			FCD_PT_ABRT("pthread_mutex_lock", ret);
 
 		fcd_tty_write_msg(tty_fd, mon);
+		fcd_alert_read_monitor(mon);
 
-		if (mon->monitor_fn != 0) {
-
-			fcd_alert_read_monitor(mon);
-
-			ret = pthread_mutex_unlock(&mon->mutex);
-			if (ret != 0)
-				FCD_PT_ABRT("pthread_mutex_unlock", ret);
-		}
+		ret = pthread_mutex_unlock(&mon->mutex);
+		if (ret != 0)
+			FCD_PT_ABRT("pthread_mutex_unlock", ret);
 	}
 }
 
