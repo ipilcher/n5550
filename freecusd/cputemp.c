@@ -23,6 +23,12 @@
 static int fcd_cputemp_warn = 47000;	/* cpu_temp_warn */
 static int fcd_cputemp_fail = 52000;	/* cpu_temp_crit */
 
+/* PWM thresholds */
+static int fcd_cputemp_pwm_max_on = 42000;	/* cpu_temp_fan_max_on */
+static int fcd_cputemp_pwm_max_hyst = 39000;	/* cpu_temp_fan_max_hyst */
+static int fcd_cputemp_pwm_hi_on = 40000;	/* cpu_temp_fan_high_on */
+static int fcd_cputemp_pwm_hi_hyst = 37000;	/* cpu_temp_fan_high_hyst */
+
 static int fcd_cputemp_cb();
 
 static const cip_opt_info fcd_cputemp_opts[] = {
@@ -38,6 +44,30 @@ static const cip_opt_info fcd_cputemp_opts[] = {
 		.post_parse_fn		= fcd_cputemp_cb,
 		.post_parse_data	= &fcd_cputemp_fail,
 	},
+	{
+		.name			= "cpu_temp_fan_max_on",
+		.type			= CIP_OPT_TYPE_FLOAT,
+		.post_parse_fn		= fcd_cputemp_cb,
+		.post_parse_data	= &fcd_cputemp_pwm_max_on,
+	},
+	{
+		.name			= "cpu_temp_fan_max_hyst",
+		.type			= CIP_OPT_TYPE_FLOAT,
+		.post_parse_fn		= fcd_cputemp_cb,
+		.post_parse_data	= &fcd_cputemp_pwm_max_hyst,
+	},
+	{
+		.name			= "cpu_temp_fan_high_on",
+		.type			= CIP_OPT_TYPE_FLOAT,
+		.post_parse_fn		= fcd_cputemp_cb,
+		.post_parse_data	= &fcd_cputemp_pwm_hi_on,
+	},
+	{
+		.name			= "cpu_temp_fan_high_hyst",
+		.type			= CIP_OPT_TYPE_FLOAT,
+		.post_parse_fn		= fcd_cputemp_cb,
+		.post_parse_data	= &fcd_cputemp_pwm_hi_hyst,
+	},
 	{	.name			= NULL		}
 };
 
@@ -52,7 +82,7 @@ static const char *fcd_cputemp_input_new[2] = {
 };
 
 /*
- * Configuration callback for alert thresholds
+ * Configuration callback for alert & PWM thresholds
  */
 static int fcd_cputemp_cb(cip_err_ctx *ctx, const cip_ini_value *value,
 			  const cip_ini_sect *sect __attribute__((unused)),
@@ -100,6 +130,7 @@ static void *fcd_cputemp_fn(void *arg)
 	struct fcd_monitor *mon = arg;
 	int warn, fail, i, ret, max, temps[2];
 	const char **fcd_cputemp_input;
+	uint8_t pwm_flags;
 	char buf[21];
 	FILE *fps[2];
 
@@ -148,6 +179,10 @@ static void *fcd_cputemp_fn(void *arg)
 		fail = (max >= fcd_cputemp_fail);
 		warn = fail ? 0 : (max >= fcd_cputemp_warn);
 
+		pwm_flags = FCD_PWM_TEMP_FLAGS(max,
+					       fcd_cputemp_pwm_max_on, fcd_cputemp_pwm_max_hyst,
+					       fcd_cputemp_pwm_hi_on, fcd_cputemp_pwm_hi_hyst);
+
 		ret = snprintf(buf, sizeof buf, "%.1f %.1f",
 			       ((double)temps[0]) / 1000.0,
 			       ((double)temps[1]) / 1000.0);
@@ -159,7 +194,7 @@ static void *fcd_cputemp_fn(void *arg)
 		if (ret < (int)sizeof buf)
 			buf[ret] = ' ';
 
-		fcd_lib_set_mon_status(mon, buf, warn, fail, NULL, 0);
+		fcd_lib_set_mon_status(mon, buf, warn, fail, NULL, pwm_flags);
 
 		ret = fcd_lib_monitor_sleep(30);
 		if (ret == -1)
