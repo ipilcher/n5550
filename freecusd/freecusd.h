@@ -201,7 +201,7 @@ struct fcd_monitor {
 	pthread_t tid;
 	_Bool enabled;
 	_Bool silent;						/* no front-panel message */
-	uint8_t old_pwm_flags;
+	uint8_t current_pwm_flags;
 	uint8_t new_pwm_flags;					/* SYNCHRONIZED */
 	enum fcd_alert_msg sys_warn;				/* SYNCHRONIZED */
 	enum fcd_alert_msg sys_fail;				/* SYNCHRONIZED */

@@ -107,13 +107,13 @@ void fcd_pwm_update(struct fcd_monitor *const mon)
 	uint8_t flags;
 	int i;
 
-	if (mon->old_pwm_flags == mon->new_pwm_flags)
+	if (mon->current_pwm_flags == mon->new_pwm_flags)
 		return;
 
-	mon->old_pwm_flags = mon->new_pwm_flags;
+	mon->current_pwm_flags = mon->new_pwm_flags;
 
 	for (flags = 0, i = 0; fcd_monitors[i] != NULL; ++i)
-		flags |= fcd_monitors[i]->old_pwm_flags;
+		flags |= fcd_monitors[i]->current_pwm_flags;
 
 	/* Should fan be set to max speed? */
 
