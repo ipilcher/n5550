@@ -199,7 +199,8 @@ struct fcd_monitor {
 	const cip_opt_info *raiddisk_opts;
 	void *(*monitor_fn)(void *);
 	pthread_t tid;
-	bool enabled;
+	_Bool enabled;
+	_Bool silent;						/* no front-panel message */
 	uint8_t old_pwm_flags;
 	uint8_t new_pwm_flags;					/* SYNCHRONIZED */
 	enum fcd_alert_msg sys_warn;				/* SYNCHRONIZED */

@@ -243,7 +243,9 @@ static void fcd_main_read_monitor(int tty_fd, struct fcd_monitor *mon)
 		if (ret != 0)
 			FCD_PT_ABRT("pthread_mutex_lock", ret);
 
-		fcd_tty_write_msg(tty_fd, mon);
+		if (!mon->silent)
+			fcd_tty_write_msg(tty_fd, mon);
+
 		fcd_alert_read_monitor(mon);
 
 		ret = pthread_mutex_unlock(&mon->mutex);
@@ -307,9 +309,12 @@ int main(int argc, char *argv[])
 
 			fcd_main_read_monitor(tty_fd, *mon);
 
-			ret = nanosleep(&fcd_main_sleep, NULL);
-			if (ret == -1 && errno != EINTR)
-				FCD_PABORT("nanosleep");
+			if (!(*mon)->silent) {
+				ret = nanosleep(&fcd_main_sleep, NULL);
+				if (ret == -1 && errno != EINTR)
+					FCD_PABORT("nanosleep");
+			}
+
 			if (fcd_main_got_exit_signal)
 				break;
 		}
