@@ -220,4 +220,5 @@ struct fcd_monitor fcd_cputemp_monitor = {
 	.enabled		= true,
 	.enabled_opt_name	= "enable_cputemp_monitor",
 	.freecusd_opts		= fcd_cputemp_opts,
+	.old_pwm_flags		= FCD_FAN_HIGH_ON,
 };

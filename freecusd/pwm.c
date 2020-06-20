@@ -149,6 +149,8 @@ void fcd_pwm_init(void)
 {
 	if ((fcd_pwm_fd = open(fcd_pwm_file, O_WRONLY | O_CLOEXEC)) < 0)
 		FCD_PFATAL(fcd_pwm_file);
+
+	fcd_pwm_set(FCD_PWM_MAX);
 }
 
 void fcd_pwm_fini(void)
