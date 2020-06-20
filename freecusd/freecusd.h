@@ -191,6 +191,8 @@ struct fcd_monitor {
 	void *(*monitor_fn)(void *);
 	pthread_t tid;
 	bool enabled;
+	uint8_t old_pwm_flags;
+	uint8_t new_pwm_flags;					/* SYNCHRONIZED */
 	enum fcd_alert_msg sys_warn;				/* SYNCHRONIZED */
 	enum fcd_alert_msg sys_fail;				/* SYNCHRONIZED */
 	enum fcd_alert_msg disk_alerts[FCD_MAX_DISK_COUNT];	/* SYNCHRONIZED */
