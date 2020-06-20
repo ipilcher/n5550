@@ -107,6 +107,9 @@ void fcd_pwm_update(struct fcd_monitor *const mon)
 	uint8_t flags;
 	int i;
 
+	if (!fcd_pwm_monitor.enabled)
+		return;
+
 	if (mon->current_pwm_flags == mon->new_pwm_flags)
 		return;
 
@@ -147,16 +150,24 @@ void fcd_pwm_update(struct fcd_monitor *const mon)
 
 void fcd_pwm_init(void)
 {
-	if ((fcd_pwm_fd = open(fcd_pwm_file, O_WRONLY | O_CLOEXEC)) < 0)
-		FCD_PFATAL(fcd_pwm_file);
+	if (fcd_pwm_monitor.enabled) {
 
-	fcd_pwm_set(FCD_PWM_MAX);
+		if ((fcd_pwm_fd = open(fcd_pwm_file, O_WRONLY | O_CLOEXEC)) < 0)
+			FCD_PFATAL(fcd_pwm_file);
+
+		fcd_pwm_set(FCD_PWM_MAX);
+	}
+	else {
+		FCD_INFO("System fan speed management (PWM) disabled\n");
+	}
 }
 
 void fcd_pwm_fini(void)
 {
-	if (close(fcd_pwm_fd) != 0)
-		FCD_PERROR(fcd_pwm_file);
+	if (fcd_pwm_monitor.enabled) {
+		if (close(fcd_pwm_fd) != 0)
+			FCD_PERROR(fcd_pwm_file);
+	}
 }
 
 struct fcd_monitor fcd_pwm_monitor = {
