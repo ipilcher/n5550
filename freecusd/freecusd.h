@@ -138,8 +138,8 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 #define FCD_MAX_DISK_COUNT             5
 
 /* Monitor PWM flags */
-#define FCD_FAN_HI_HYST		0x01	/* above fan high hysteresis threshold */
-#define FCD_FAN_HI_ON		0x02	/* at or above fan high on threshold */
+#define FCD_FAN_HIGH_HYST	0x01	/* above fan high hysteresis threshold */
+#define FCD_FAN_HIGH_ON		0x02	/* at or above fan high on threshold */
 #define FCD_FAN_MAX_HYST	0x04	/* above fan max hysteresis threshold */
 #define FCD_FAN_MAX_ON		0x08	/* at or above fan max on threshold */
 
