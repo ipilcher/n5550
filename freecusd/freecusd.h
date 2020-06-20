@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2016-2017 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016-2017, 2020 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -30,9 +30,6 @@
 
 #include <libcip.h>
 
-#define FCD_DISK_NAME_SIZE             (sizeof "/dev/sd_")
-#define FCD_DISK_DEV_SIZE	       (sizeof "sd_")
-#define FCD_MAX_DISK_COUNT             5
 
 /*
  * Error reporting stuff
@@ -132,8 +129,36 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 						FCD_MUST_BE_ARRAY(arr))
 
 /*
- * Data types
+ * Data types & constants
  */
+
+/* Used to set the size of various structures & buffers */
+#define FCD_DISK_NAME_SIZE             (sizeof "/dev/sd_")
+#define FCD_DISK_DEV_SIZE	       (sizeof "sd_")
+#define FCD_MAX_DISK_COUNT             5
+
+/* Monitor PWM flags */
+#define FCD_FAN_HI_HYST		0x01	/* above fan high hysteresis threshold */
+#define FCD_FAN_HI_ON		0x02	/* at or above fan high on threshold */
+#define FCD_FAN_MAX_HYST	0x04	/* above fan max hysteresis threshold */
+#define FCD_FAN_MAX_ON		0x08	/* at or above fan max on threshold */
+
+/* Fan PWM states */
+enum fcd_pwm_state {
+	FCD_PWM_NORMAL = 0,
+	FCD_PWM_HIGH,
+	FCD_PWM_MAX
+};
+
+/* String representations of the PWM states */
+extern const char *const fcd_pwm_state_names[FCD_PWM_MAX + 1];
+
+/* Parsed PWM value */
+struct fcd_pwm_value {
+	size_t	len;		/* strlen(s) */
+	int	value;		/* 0 - 255 */
+	char	s[4];		/* value as a string */
+};
 
 /* Used to communicate warning/failure alerts between threads */
 enum fcd_alert_msg {
