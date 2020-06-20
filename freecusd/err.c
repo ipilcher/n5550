@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2020 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -22,7 +22,8 @@
 #include <errno.h>
 
 int fcd_err_child_errfd = STDERR_FILENO;
-int fcd_err_foreground = 0;
+_Bool fcd_err_foreground = 0;
+_Bool fcd_err_debug = 0;
 
 static const char *const fcd_err_severities[] = {
 	"ERROR",
@@ -34,14 +35,17 @@ void fcd_err_msg(int priority, const char *format, ...)
 {
 	va_list ap;
 
-	va_start(ap, format);
+	if (priority != LOG_DEBUG || fcd_err_debug) {
 
-	if (fcd_err_foreground)
-		vfprintf(stderr, format, ap);
-	else
-		vsyslog(priority, format, ap);
+		va_start(ap, format);
 
-	va_end(ap);
+		if (fcd_err_foreground)
+			vfprintf(stderr, format, ap);
+		else
+			vsyslog(priority, format, ap);
+
+		va_end(ap);
+	}
 }
 
 void fcd_err_perror(const char *msg, const char *file, int line, int sev)

@@ -103,6 +103,9 @@ static void fcd_main_parse_args(int argc, char *argv[])
 		if (strcmp("-f", argv[i]) == 0) {
 			fcd_err_foreground = 1;
 		}
+		else if (strcmp("-d", argv[i]) == 0) {
+			fcd_err_debug = 1;
+		}
 		else if (strcmp("-c", argv[i]) == 0) {
 			if (++i < argc) {
 				fcd_conf_file_name = argv[i];

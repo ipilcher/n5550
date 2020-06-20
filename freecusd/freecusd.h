@@ -177,7 +177,10 @@ struct fcd_raid_disk {
 extern const char *fcd_conf_file_name;
 
 /* Detach from terminal?  Log to syslog or stderr? */
-extern int fcd_err_foreground;
+extern _Bool fcd_err_foreground;
+
+/* Log/print debugging messages? */
+extern _Bool fcd_err_debug;
 
 /* File descriptor used to log errors in fork()ed child (before exec) */
 extern int fcd_err_child_errfd;
