@@ -251,6 +251,7 @@ extern struct fcd_monitor fcd_sysfan_monitor;
 extern struct fcd_monitor fcd_hddtemp_monitor;
 extern struct fcd_monitor fcd_smart_monitor;
 extern struct fcd_monitor fcd_raid_monitor;
+extern struct fcd_monitor fcd_pwm_monitor;
 extern struct fcd_monitor *fcd_monitors[];
 
 /* Number and names of disks to monitor */
@@ -333,6 +334,11 @@ extern int fcd_conf_disk_int_cb_help(cip_err_ctx *ctx,
 
 /* RAID disk auto-detection - disk.c */
 extern int fcd_disk_detect(void);
+
+/* Fan speed (PWM) - pwm.c */
+extern void fcd_pwm_update(struct fcd_monitor *mon);
+extern void fcd_pwm_init(void);
+extern void fcd_pwm_fini(void);
 
 
 #endif	/* FREECUSD_H */

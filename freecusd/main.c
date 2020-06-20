@@ -37,6 +37,7 @@ static struct fcd_monitor fcd_main_logo = {
 
 struct fcd_monitor *fcd_monitors[] = {
 	&fcd_main_logo,
+	&fcd_pwm_monitor,		/* "silent" monitor; doesn't display anything */
 	&fcd_loadavg_monitor,
 	&fcd_cputemp_monitor,
 	&fcd_sysfan_monitor,
@@ -247,6 +248,7 @@ static void fcd_main_read_monitor(int tty_fd, struct fcd_monitor *mon)
 			fcd_tty_write_msg(tty_fd, mon);
 
 		fcd_alert_read_monitor(mon);
+		fcd_pwm_update(mon);
 
 		ret = pthread_mutex_unlock(&mon->mutex);
 		if (ret != 0)
@@ -302,6 +304,7 @@ int main(int argc, char *argv[])
 	fcd_pic_reset();
 	tty_fd = fcd_tty_open("/dev/ttyS0");
 	fcd_alert_leds_open();
+	fcd_pwm_init();
 
 	while (!fcd_main_got_exit_signal) {
 
@@ -321,6 +324,7 @@ int main(int argc, char *argv[])
 	}
 
 	fcd_alert_leds_close();
+	fcd_pwm_fini();
 	if (close(tty_fd) == -1)
 		FCD_PERROR("close");
 
