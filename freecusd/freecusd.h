@@ -168,7 +168,20 @@ enum fcd_alert_msg {
 	FCD_ALERT_SET_REQ,
 };
 
-/* Every thread that monitors some aspect of the NAS has one of these */
+/*
+ * Data about a "monitor" - which monitors, displays, and/or controls some
+ * aspect of the NAS.  Most monitors run as a separate thread, but a single
+ * thread can manage multiple monitors.  (For example, the HDD temperature
+ * monitor runs in the SMART monitor thread.)  A monitor may also lack a
+ * dedicated thread if it is completely static (the logo "monitor") or
+ * reactive (the PWM monitor).
+ *
+ * The SYNCHRONIZED members of the structure are updated by the monitor threads
+ * and processed by the "main" thread, which updates the NAS's front-panel LCD
+ * display and alert LEDs and controls the fan speed.  All access to the
+ * SYNCHRONIZED members requires locking the monitor's mutex.  (This is true
+ * even of the static "logo monitor".
+ */
 struct fcd_monitor {
 	pthread_mutex_t mutex;
 	const char *name;
@@ -178,10 +191,10 @@ struct fcd_monitor {
 	void *(*monitor_fn)(void *);
 	pthread_t tid;
 	bool enabled;
-	enum fcd_alert_msg sys_warn;
-	enum fcd_alert_msg sys_fail;
-	enum fcd_alert_msg disk_alerts[FCD_MAX_DISK_COUNT];
-	uint8_t buf[66];
+	enum fcd_alert_msg sys_warn;				/* SYNCHRONIZED */
+	enum fcd_alert_msg sys_fail;				/* SYNCHRONIZED */
+	enum fcd_alert_msg disk_alerts[FCD_MAX_DISK_COUNT];	/* SYNCHRONIZED */
+	uint8_t buf[66];					/* SYNCHRONIZED */
 };
 
 /* Config info about a RAID disk */
