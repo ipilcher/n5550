@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2016-2017 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016-2017, 2020 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -308,11 +308,11 @@ void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon, const int *pipe_fds,
 }
 
 /*
- * Called by monitor threads to update message buffer and alerts in monitor
- * structure, where main thread will act upon them.
+ * Called by monitor threads to update message buffer, alerts, and PWM flags in
+ * monitor structure - where main thread will act upon them.
  */
-void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf, int warn,
-			    int fail, const int *disks)
+void fcd_lib_set_mon_status(struct fcd_monitor *const mon, const char *const buf, const int warn,
+			    const int fail, const int *const disks, const uint8_t pwm_flags)
 {
 	unsigned i, led;
 	int ret;
@@ -327,6 +327,8 @@ void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf, int warn,
 			 &mon->sys_warn);
 	fcd_alert_update(fail ? FCD_ALERT_SET_REQ : FCD_ALERT_CLR_REQ,
 			 &mon->sys_fail);
+
+	mon->new_pwm_flags = pwm_flags;
 
 	if (disks != NULL) {
 

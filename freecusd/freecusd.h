@@ -286,7 +286,8 @@ __attribute__((noreturn)) extern void *fcd_proc_fn(void *arg);
 
 /* Utility functions - lib.c */
 extern void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,
-				   int warn, int fail, const int *disks);
+				   int warn, int fail, const int *disks,
+				   uint8_t pwm_flags);
 extern int fcd_lib_monitor_sleep(time_t seconds);
 extern ssize_t fcd_lib_read(int fd, void *buf, size_t count,
 			    struct timespec *timeout);

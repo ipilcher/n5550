@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2016-2017 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016-2017, 2020 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -278,7 +278,7 @@ static void process_status(int *const restrict status)
 		}
 	}
 
-	fcd_lib_set_mon_status(&fcd_smart_monitor, buf, warn, fail, alerts);
+	fcd_lib_set_mon_status(&fcd_smart_monitor, buf, warn, fail, alerts, 0);
 }
 
 static void process_temps(int *const restrict status,
@@ -343,7 +343,7 @@ static void process_temps(int *const restrict status,
 		}
 	}
 
-	fcd_lib_set_mon_status(&fcd_hddtemp_monitor, buf, warn, fail, alerts);
+	fcd_lib_set_mon_status(&fcd_hddtemp_monitor, buf, warn, fail, alerts, 0);
 }
 
 
