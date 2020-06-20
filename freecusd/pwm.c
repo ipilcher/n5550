@@ -16,6 +16,18 @@
 
 #include "freecusd.h"
 
+#include <fcntl.h>
+
+const char *const fcd_pwm_state_names[FCD_PWM_MAX + 1] = {
+	"NORMAL",
+	"HIGH",
+	"MAXIMUM"
+};
+
+static const char fcd_pwm_file[] = "/sys/devices/platform/it87.656/pwm3";
+static enum fcd_pwm_state fcd_pwm_current_state = FCD_PWM_NORMAL;
+static int fcd_pwm_fd;
+
 static struct fcd_pwm_value fcd_pwm_values[FCD_PWM_MAX + 1] = {
 	[FCD_PWM_NORMAL]	= { .value = 170, .s = "170", .len = 3 },
 	[FCD_PWM_HIGH]		= { .value = 215, .s = "215", .len = 3 },
@@ -71,19 +83,78 @@ static int fcd_pwm_cb(cip_err_ctx *const ctx, const cip_ini_value *const value,
 	return 0;
 }
 
+static void fcd_pwm_set(const enum fcd_pwm_state new)
+{
+	ssize_t ret;
+
+	if (fcd_pwm_current_state == new)
+		return;
+
+	FCD_INFO("Changing fan speed from %s to %s\n",
+		 fcd_pwm_state_names[fcd_pwm_current_state], fcd_pwm_state_names[new]);
+
+	ret = write(fcd_pwm_fd, fcd_pwm_values[new].s, fcd_pwm_values[new].len);
+	if (ret < 0)
+		FCD_PABORT(fcd_pwm_file);
+	if ((size_t)ret != fcd_pwm_values[new].len)
+		FCD_ABORT("Incomplete write (%zd bytes)\n", ret);
+
+	fcd_pwm_current_state = new;
+}
+
 void fcd_pwm_update(struct fcd_monitor *const mon)
 {
+	uint8_t flags;
+	int i;
 
+	if (mon->old_pwm_flags == mon->new_pwm_flags)
+		return;
+
+	mon->old_pwm_flags = mon->new_pwm_flags;
+
+	for (flags = 0, i = 0; fcd_monitors[i] != NULL; ++i)
+		flags |= fcd_monitors[i]->old_pwm_flags;
+
+	/* Should fan be set to max speed? */
+
+	if (flags & FCD_FAN_MAX_ON) {
+		fcd_pwm_set(FCD_PWM_MAX);
+		return;
+	}
+
+	if (flags & FCD_FAN_MAX_HYST && fcd_pwm_current_state == FCD_PWM_MAX) {
+		/* Already set to max; nothing to do */
+		return;
+	}
+
+	/* NOT max speed; what about high speed? */
+
+	if (flags & FCD_FAN_HIGH_ON) {
+		fcd_pwm_set(FCD_PWM_HIGH);
+		return;
+	}
+
+	if (flags & FCD_FAN_HIGH_HYST && fcd_pwm_current_state >= FCD_PWM_HIGH) {
+		/* Not necessarily a no-op; fan may be set to max */
+		fcd_pwm_set(FCD_PWM_HIGH);
+		return;
+	}
+
+	/* Normal speed it is */
+
+	fcd_pwm_set(FCD_PWM_NORMAL);
 }
 
 void fcd_pwm_init(void)
 {
-
+	if ((fcd_pwm_fd = open(fcd_pwm_file, O_WRONLY | O_CLOEXEC)) < 0)
+		FCD_PFATAL(fcd_pwm_file);
 }
 
 void fcd_pwm_fini(void)
 {
-
+	if (close(fcd_pwm_fd) != 0)
+		FCD_PERROR(fcd_pwm_file);
 }
 
 struct fcd_monitor fcd_pwm_monitor = {

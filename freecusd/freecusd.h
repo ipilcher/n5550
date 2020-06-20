@@ -154,9 +154,9 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 
 /* Fan PWM states */
 enum fcd_pwm_state {
-	FCD_PWM_NORMAL = 0,
-	FCD_PWM_HIGH,
-	FCD_PWM_MAX
+	FCD_PWM_NORMAL	= 0,
+	FCD_PWM_HIGH	= 1,
+	FCD_PWM_MAX	= 2
 };
 
 /* String representations of the PWM states */
