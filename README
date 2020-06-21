@@ -1,11 +1,11 @@
 Thecus N5550 Hardware Support
-Copyright 2013-2015 Ian Pilcher <arequipeno@gmail.com>
+Copyright 2013-2020 Ian Pilcher <arequipeno@gmail.com>
 ======================================================
 
 For RHEL/CentOS/Scientific Linux 7, see the QuickStart in the wiki:
 
   https://github.com/ipilcher/n5550/wiki/QuickStart-for-CentOS-7
-  
+
 For RHEL/CentOS/Scientific Linux 6, use kernel-lt from ELRepo.  The n5550 RPM
 will probably need to be modified slightly to work on EL6.
 
@@ -26,8 +26,8 @@ n5550_ahci_leds - "Hooks" into libahci module to provide LED triggers for disk
 n5550_board - Sets up chipset, LEDs, GPIOs, etc.  Disk activity LEDs have
 	default triggers, so they should "just work" once both modules are
 	loaded.
-	
-	
+
+
 Monitoring Daemon
 -----------------
 
@@ -47,11 +47,11 @@ Operating System Integration
 
 /usr/lib/dracut/dracut.conf.d/n5550.conf - dracut configuration file to ensure
 	required kernel modules are included in initial RAM-disk
-	
+
 /usr/lib/modprobe.d/n5550.conf - Ensures that n5550_ahci_leds is loaded as soon
 	as libahci (before any other module that uses libahci).  Also configures
 	system fan PWM.
-	
+
 /usr/lib/modules-load.d/n5550.conf - Ensures it87 kernel module is loaded
 
 /usr/lib/udev/rules.d/99-n5550.rules - Triggers load of n5550_board module once
