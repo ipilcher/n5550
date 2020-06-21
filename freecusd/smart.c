@@ -34,6 +34,10 @@ static char *fcd_smart_cmd[] = {
 /* Alert thresholds */
 static const int fcd_hddtemp_warn_def = 45;
 static const int fcd_hddtemp_crit_def = 50;
+static const int fcd_hddtemp_fan_max_on_def = 43;
+static const int fcd_hddtemp_fan_max_hyst_def = 41;
+static const int fcd_hddtemp_fan_high_on_def = 40;
+static const int fcd_hddtemp_fan_high_on_hyst = 38;
 
 static const cip_opt_info fcd_smart_opts[] = {
 	{
@@ -64,6 +68,38 @@ static const cip_opt_info fcd_hddtemp_freecusd_opts[] = {
 		.default_value		= &fcd_hddtemp_crit_def,
 	},
 	{
+		.name			= "hdd_temp_fan_max_on",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_on,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_hddtemp_fan_max_on_def,
+	},
+	{
+		.name			= "hdd_temp_fan_max_hyst",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_hyst,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_hddtemp_fan_max_hyst_def,
+	},
+	{
+		.name			= "hdd_temp_fan_high_on",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_on,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_hddtemp_fan_high_on_def,
+	},
+	{
+		.name			= "hdd_temp_fan_high_hyst",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_hyst,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_hddtemp_fan_high_on_hyst,
+	},
+	{
 		.name			= NULL
 	}
 };
@@ -90,6 +126,30 @@ static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
 		.post_parse_data	= &fcd_conf_disks[0].temp_crit,
 	},
 	{
+		.name			= "hdd_temp_fan_max_on",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_on,
+	},
+	{
+		.name			= "hdd_temp_fan_max_hyst",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_hyst,
+	},
+	{
+		.name			= "hdd_temp_fan_high_on",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_on,
+	},
+	{
+		.name			= "hdd_temp_fan_high_hyst",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
+		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_hyst,
+	},
+	{
 		.name			= NULL
 	}
 };
@@ -109,10 +169,8 @@ static int fcd_hddtemp_check_temp(cip_err_ctx *ctx, int temp)
 }
 
 static int fcd_hddtemp_freecusd_cb(cip_err_ctx *ctx, const cip_ini_value *value,
-				   const cip_ini_sect *sect
-						__attribute__((unused)),
-				   const cip_ini_file *file
-						__attribute__((unused)),
+				   const cip_ini_sect *sect __attribute__((unused)),
+				   const cip_ini_file *file __attribute__((unused)),
 				   void *post_parse_data)
 {
 	int temp, *p;
@@ -288,6 +346,7 @@ static void process_temps(int *const restrict status,
 {
 	int alerts[FCD_MAX_DISK_COUNT], warn, fail;
 	char buf[21], *c;
+	uint8_t pwm_flags;
 	unsigned i;
 	int ret;
 
@@ -295,6 +354,7 @@ static void process_temps(int *const restrict status,
 	memset(buf, ' ', sizeof buf);
 	warn = 0;
 	fail = 0;
+	pwm_flags = 0;
 
 	for (i = 0; i < fcd_conf_disk_count; ++i) {
 
@@ -340,10 +400,16 @@ static void process_temps(int *const restrict status,
 				alerts[i] = 1;
 				warn = !fail;
 			}
+
+			pwm_flags |= FCD_PWM_TEMP_FLAGS(temps[i],
+							fcd_conf_disks[i].temp_fan_max_on,
+							fcd_conf_disks[i].temp_fan_max_hyst,
+							fcd_conf_disks[i].temp_fan_high_on,
+							fcd_conf_disks[i].temp_fan_high_hyst);
 		}
 	}
 
-	fcd_lib_set_mon_status(&fcd_hddtemp_monitor, buf, warn, fail, alerts, 0);
+	fcd_lib_set_mon_status(&fcd_hddtemp_monitor, buf, warn, fail, alerts, pwm_flags);
 }
 
 

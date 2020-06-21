@@ -214,8 +214,12 @@ struct fcd_raid_disk {
 	unsigned port_no;
 	int temp_warn;
 	int temp_crit;
-	bool temp_ignore;
-	bool smart_ignore;
+	int temp_fan_max_on;
+	int temp_fan_max_hyst;
+	int temp_fan_high_on;
+	int temp_fan_high_hyst;
+	_Bool temp_ignore;
+	_Bool smart_ignore;
 	char name[FCD_DISK_NAME_SIZE];
 };
 
