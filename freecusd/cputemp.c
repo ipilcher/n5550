@@ -20,55 +20,57 @@
 #include <limits.h>
 
 /* Alert thresholds */
-static int fcd_cputemp_warn = 47000;	/* cpu_temp_warn */
-static int fcd_cputemp_fail = 52000;	/* cpu_temp_crit */
+static int fcd_coretemp_warn = 47000;		/* cpu_core_temp_warn */
+static int fcd_coretemp_fail = 52000;		/* cpu_core_temp_crit */
 
 /* PWM thresholds */
-static int fcd_cputemp_pwm_max_on = 42000;	/* cpu_temp_fan_max_on */
-static int fcd_cputemp_pwm_max_hyst = 39000;	/* cpu_temp_fan_max_hyst */
-static int fcd_cputemp_pwm_hi_on = 40000;	/* cpu_temp_fan_high_on */
-static int fcd_cputemp_pwm_hi_hyst = 37000;	/* cpu_temp_fan_high_hyst */
+static int fcd_coretemp_pwm_max_on = 42000;	/* cpu_core_temp_fan_max_on */
+static int fcd_coretemp_pwm_max_hyst = 39000;	/* cpu_core_temp_fan_max_hyst */
+static int fcd_coretemp_pwm_high_on = 40000;	/* cpu_core_temp_fan_high_on */
+static int fcd_coretemp_pwm_high_hyst = 37000;	/* cpu_core_temp_fan_high_hyst */
 
 static int fcd_cputemp_cb();
 
 static const cip_opt_info fcd_cputemp_opts[] = {
 	{
-		.name			= "cpu_temp_warn",
+		.name			= "cpu_core_temp_warn",
 		.type			= CIP_OPT_TYPE_FLOAT,
 		.post_parse_fn		= fcd_cputemp_cb,
-		.post_parse_data	= &fcd_cputemp_warn,
+		.post_parse_data	= &fcd_coretemp_warn,
 	},
 	{
-		.name			= "cpu_temp_crit",
+		.name			= "cpu_core_temp_crit",
 		.type			= CIP_OPT_TYPE_FLOAT,
 		.post_parse_fn		= fcd_cputemp_cb,
-		.post_parse_data	= &fcd_cputemp_fail,
+		.post_parse_data	= &fcd_coretemp_fail,
 	},
 	{
-		.name			= "cpu_temp_fan_max_on",
+		.name			= "cpu_core_temp_fan_max_on",
 		.type			= CIP_OPT_TYPE_FLOAT,
 		.post_parse_fn		= fcd_cputemp_cb,
-		.post_parse_data	= &fcd_cputemp_pwm_max_on,
+		.post_parse_data	= &fcd_coretemp_pwm_max_on,
 	},
 	{
-		.name			= "cpu_temp_fan_max_hyst",
+		.name			= "cpu_core_temp_fan_max_hyst",
 		.type			= CIP_OPT_TYPE_FLOAT,
 		.post_parse_fn		= fcd_cputemp_cb,
-		.post_parse_data	= &fcd_cputemp_pwm_max_hyst,
+		.post_parse_data	= &fcd_coretemp_pwm_max_hyst,
 	},
 	{
-		.name			= "cpu_temp_fan_high_on",
+		.name			= "cpu_core_temp_fan_high_on",
 		.type			= CIP_OPT_TYPE_FLOAT,
 		.post_parse_fn		= fcd_cputemp_cb,
-		.post_parse_data	= &fcd_cputemp_pwm_hi_on,
+		.post_parse_data	= &fcd_coretemp_pwm_high_on,
 	},
 	{
-		.name			= "cpu_temp_fan_high_hyst",
+		.name			= "cpu_core_temp_fan_high_hyst",
 		.type			= CIP_OPT_TYPE_FLOAT,
 		.post_parse_fn		= fcd_cputemp_cb,
-		.post_parse_data	= &fcd_cputemp_pwm_hi_hyst,
+		.post_parse_data	= &fcd_coretemp_pwm_high_hyst,
 	},
-	{	.name			= NULL		}
+	{
+		.name			= NULL
+	}
 };
 
 static const char *fcd_cputemp_input_old[2] = {
@@ -176,14 +178,16 @@ static void *fcd_cputemp_fn(void *arg)
 		}
 
 		max = (temps[0] > temps[1]) ? temps[0] : temps[1];
-		fail = (max >= fcd_cputemp_fail);
-		warn = fail ? 0 : (max >= fcd_cputemp_warn);
+		fail = (max >= fcd_coretemp_fail);
+		warn = fail ? 0 : (max >= fcd_coretemp_warn);
 
 		pwm_flags = FCD_PWM_TEMP_FLAGS(max,
-					       fcd_cputemp_pwm_max_on, fcd_cputemp_pwm_max_hyst,
-					       fcd_cputemp_pwm_hi_on, fcd_cputemp_pwm_hi_hyst);
+					       fcd_coretemp_pwm_max_on,
+					       fcd_coretemp_pwm_max_hyst,
+					       fcd_coretemp_pwm_high_on,
+					       fcd_coretemp_pwm_high_hyst);
 
-		ret = snprintf(buf, sizeof buf, "%.1f %.1f",
+		ret = snprintf(buf, sizeof buf, "CORE0: %.0f  CORE1: %.0f",
 			       ((double)temps[0]) / 1000.0,
 			       ((double)temps[1]) / 1000.0);
 		if (ret < 0) {
@@ -210,12 +214,12 @@ static void *fcd_cputemp_fn(void *arg)
 	pthread_exit(NULL);
 }
 
-struct fcd_monitor fcd_cputemp_monitor = {
+struct fcd_monitor fcd_coretemp_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
-	.name			= "CPU temperature",
+	.name			= "CPU core temperature",
 	.monitor_fn		= fcd_cputemp_fn,
 	.buf			= "....."
-				  "CPU TEMPERATURE     "
+				  "CPU CORE TEMPERATURE"
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_cputemp_monitor",

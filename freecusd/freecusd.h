@@ -250,7 +250,7 @@ extern sigset_t fcd_proc_ppoll_sigmask;
 
 /* The monitors */
 extern struct fcd_monitor fcd_loadavg_monitor;
-extern struct fcd_monitor fcd_cputemp_monitor;
+extern struct fcd_monitor fcd_coretemp_monitor;
 extern struct fcd_monitor fcd_sysfan_monitor;
 extern struct fcd_monitor fcd_hddtemp_monitor;
 extern struct fcd_monitor fcd_smart_monitor;

@@ -39,7 +39,7 @@ struct fcd_monitor *fcd_monitors[] = {
 	&fcd_main_logo,
 	&fcd_pwm_monitor,		/* "silent" monitor; doesn't display anything */
 	&fcd_loadavg_monitor,
-	&fcd_cputemp_monitor,
+	&fcd_coretemp_monitor,
 	&fcd_sysfan_monitor,
 	&fcd_smart_monitor,
 	&fcd_hddtemp_monitor,		/* "slave" of the S.M.A.R.T. monitor */
