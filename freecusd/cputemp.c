@@ -73,12 +73,7 @@ static const cip_opt_info fcd_cputemp_opts[] = {
 	}
 };
 
-static const char *fcd_cputemp_input_old[2] = {
-	"/sys/devices/platform/coretemp.0/temp2_input",
-	"/sys/devices/platform/coretemp.0/temp3_input"
-};
-
-static const char *fcd_cputemp_input_new[2] = {
+static const char *fcd_coretemp_input[2] = {
 	"/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp2_input",
 	"/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp3_input"
 };
@@ -131,20 +126,14 @@ static void *fcd_cputemp_fn(void *arg)
 {
 	struct fcd_monitor *mon = arg;
 	int warn, fail, i, ret, max, temps[2];
-	const char **fcd_cputemp_input;
 	uint8_t pwm_flags;
 	char buf[21];
 	FILE *fps[2];
 
-	if (access(fcd_cputemp_input_new[0], F_OK) == 0)
-		fcd_cputemp_input = fcd_cputemp_input_new;
-	else
-		fcd_cputemp_input = fcd_cputemp_input_old;
-
 	for (i = 0; i < 2; ++i) {
-		fps[i] = fopen(fcd_cputemp_input[i], "re");
+		fps[i] = fopen(fcd_coretemp_input[i], "re");
 		if (fps[i] == NULL) {
-			FCD_PERROR(fcd_cputemp_input[i]);
+			FCD_PERROR(fcd_coretemp_input[i]);
 			if (i == 1 && fclose(fps[0]) == EOF)
 				FCD_PERROR("fclose");
 			fcd_lib_disable_monitor(mon);
@@ -172,7 +161,7 @@ static void *fcd_cputemp_fn(void *arg)
 			}
 			else if (ret != 1) {
 				FCD_WARN("Failed to parse contents of %s\n",
-					 fcd_cputemp_input[i]);
+					 fcd_coretemp_input[i]);
 				fcd_cputemp_close_and_disable(fps, mon);
 			}
 		}
