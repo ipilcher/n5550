@@ -18,20 +18,27 @@
 
 #include <fcntl.h>
 
-const char *const fcd_pwm_state_names[FCD_PWM_MAX + 1] = {
+/* Parsed PWM value */
+struct fcd_pwm_value {
+	size_t	len;		/* strlen(s) */
+	int	value;		/* 0 - 255 */
+	char	s[4];		/* value as a string */
+};
+
+const char *const fcd_pwm_state_names[FCD_PWM_STATE_ARRAY_SIZE] = {
 	"NORMAL",
 	"HIGH",
 	"MAXIMUM"
 };
 
 static const char fcd_pwm_file[] = "/sys/devices/platform/it87.656/pwm3";
-static enum fcd_pwm_state fcd_pwm_current_state = FCD_PWM_NORMAL;
+static enum fcd_pwm_state fcd_pwm_current_state = FCD_PWM_STATE_NORMAL;
 static int fcd_pwm_fd;
 
-static struct fcd_pwm_value fcd_pwm_values[FCD_PWM_MAX + 1] = {
-	[FCD_PWM_NORMAL]	= { .value = 170, .s = "170", .len = 3 },
-	[FCD_PWM_HIGH]		= { .value = 215, .s = "215", .len = 3 },
-	[FCD_PWM_MAX]		= { .value = 255, .s = "255", .len = 3 }
+static struct fcd_pwm_value fcd_pwm_values[FCD_PWM_STATE_ARRAY_SIZE] = {
+	[FCD_PWM_STATE_NORMAL]	= { .value = 170, .s = "170", .len = 3 },
+	[FCD_PWM_STATE_HIGH]	= { .value = 215, .s = "215", .len = 3 },
+	[FCD_PWM_STATE_MAX]	= { .value = 255, .s = "255", .len = 3 }
 };
 
 static int fcd_pwm_cb();
@@ -41,19 +48,19 @@ static const cip_opt_info fcd_pwm_opts[] = {
 		.name			= "sysfan_pwm_normal",
 		.type			= CIP_OPT_TYPE_INT,
 		.post_parse_fn		= fcd_pwm_cb,
-		.post_parse_data	= &fcd_pwm_values[FCD_PWM_NORMAL],
+		.post_parse_data	= &fcd_pwm_values[FCD_PWM_STATE_NORMAL],
 	},
 	{
 		.name			= "sysfan_pwm_high",
 		.type			= CIP_OPT_TYPE_INT,
 		.post_parse_fn		= fcd_pwm_cb,
-		.post_parse_data	= &fcd_pwm_values[FCD_PWM_HIGH],
+		.post_parse_data	= &fcd_pwm_values[FCD_PWM_STATE_HIGH],
 	},
 	{
 		.name			= "sysfan_pwm_max",
 		.type			= CIP_OPT_TYPE_INT,
 		.post_parse_fn		= fcd_pwm_cb,
-		.post_parse_data	= &fcd_pwm_values[FCD_PWM_MAX],
+		.post_parse_data	= &fcd_pwm_values[FCD_PWM_STATE_MAX],
 	},
 	{	.name			= NULL		}
 };
@@ -121,11 +128,11 @@ void fcd_pwm_update(struct fcd_monitor *const mon)
 	/* Should fan be set to max speed? */
 
 	if (flags & FCD_FAN_MAX_ON) {
-		fcd_pwm_set(FCD_PWM_MAX);
+		fcd_pwm_set(FCD_PWM_STATE_MAX);
 		return;
 	}
 
-	if (flags & FCD_FAN_MAX_HYST && fcd_pwm_current_state == FCD_PWM_MAX) {
+	if (flags & FCD_FAN_MAX_HYST && fcd_pwm_current_state == FCD_PWM_STATE_MAX) {
 		/* Already set to max; nothing to do */
 		return;
 	}
@@ -133,19 +140,19 @@ void fcd_pwm_update(struct fcd_monitor *const mon)
 	/* NOT max speed; what about high speed? */
 
 	if (flags & FCD_FAN_HIGH_ON) {
-		fcd_pwm_set(FCD_PWM_HIGH);
+		fcd_pwm_set(FCD_PWM_STATE_HIGH);
 		return;
 	}
 
-	if (flags & FCD_FAN_HIGH_HYST && fcd_pwm_current_state >= FCD_PWM_HIGH) {
+	if (flags & FCD_FAN_HIGH_HYST && fcd_pwm_current_state >= FCD_PWM_STATE_HIGH) {
 		/* Not necessarily a no-op; fan may be set to max */
-		fcd_pwm_set(FCD_PWM_HIGH);
+		fcd_pwm_set(FCD_PWM_STATE_HIGH);
 		return;
 	}
 
 	/* Normal speed it is */
 
-	fcd_pwm_set(FCD_PWM_NORMAL);
+	fcd_pwm_set(FCD_PWM_STATE_NORMAL);
 }
 
 void fcd_pwm_init(void)
@@ -155,7 +162,7 @@ void fcd_pwm_init(void)
 		if ((fcd_pwm_fd = open(fcd_pwm_file, O_WRONLY | O_CLOEXEC)) < 0)
 			FCD_PFATAL(fcd_pwm_file);
 
-		fcd_pwm_set(FCD_PWM_MAX);
+		fcd_pwm_set(FCD_PWM_STATE_MAX);
 	}
 	else {
 		FCD_INFO("System fan speed management (PWM) disabled\n");

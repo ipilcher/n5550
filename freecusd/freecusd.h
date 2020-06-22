@@ -154,20 +154,15 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 
 /* Fan PWM states */
 enum fcd_pwm_state {
-	FCD_PWM_NORMAL	= 0,
-	FCD_PWM_HIGH	= 1,
-	FCD_PWM_MAX	= 2
+	FCD_PWM_STATE_NORMAL	= 0,
+	FCD_PWM_STATE_HIGH	= 1,
+	FCD_PWM_STATE_MAX	= 2
 };
+
+#define FCD_PWM_STATE_ARRAY_SIZE	(FCD_PWM_STATE_MAX + 1)
 
 /* String representations of the PWM states */
-extern const char *const fcd_pwm_state_names[FCD_PWM_MAX + 1];
-
-/* Parsed PWM value */
-struct fcd_pwm_value {
-	size_t	len;		/* strlen(s) */
-	int	value;		/* 0 - 255 */
-	char	s[4];		/* value as a string */
-};
+extern const char *const fcd_pwm_state_names[FCD_PWM_STATE_ARRAY_SIZE];
 
 /* Used to communicate warning/failure alerts between threads */
 enum fcd_alert_msg {
