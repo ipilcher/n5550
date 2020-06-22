@@ -211,7 +211,7 @@ struct fcd_monitor fcd_coretemp_monitor = {
 				  "CPU CORE TEMPERATURE"
 				  "                    ",
 	.enabled		= true,
-	.enabled_opt_name	= "enable_cputemp_monitor",
+	.enabled_opt_name	= "enable_cpu_core_temp_monitor",
 	.freecusd_opts		= fcd_cputemp_opts,
 	.current_pwm_flags	= FCD_FAN_HIGH_ON,
 };
