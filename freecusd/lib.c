@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <poll.h>
+#include <stdarg.h>
 
 #define FCD_LIB_BUF_CHUNK	2000
 
@@ -247,7 +248,10 @@ ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
 	return total;
 }
 
-static void fcd_lib_disable(struct fcd_monitor *const mon)
+/*
+ * Mark a monitor as failed
+ */
+void fcd_lib_fail(struct fcd_monitor *const mon)
 {
 	static const char disabled_msg[20] = "ERROR: NOT AVAILABLE";
 	int ret;
@@ -267,27 +271,14 @@ static void fcd_lib_disable(struct fcd_monitor *const mon)
 }
 
 /*
- * Called by a monitor thread to disable a "slave" monitor.
- */
-void fcd_lib_disable_slave(struct fcd_monitor *mon)
-{
-	if (mon->monitor_fn != 0)
-		FCD_ABORT("%s is not a slave\n", mon->name);
-
-	fcd_lib_disable(mon);
-}
-
-/*
  * Called by a monitor thread to disable itself when an error occurs.
  *
  * Never returns.
  */
-void fcd_lib_disable_monitor(struct fcd_monitor *mon)
+__attribute__((noreturn))
+void fcd_lib_fail_and_exit(struct fcd_monitor *mon)
 {
-	if (mon->monitor_fn == 0)
-		FCD_ABORT("%s is a slave\n", mon->name);
-
-	fcd_lib_disable(mon);
+	fcd_lib_fail(mon);
 	pthread_exit(NULL);
 }
 
@@ -299,20 +290,25 @@ void fcd_lib_disable_monitor(struct fcd_monitor *mon)
  *
  * NOTE: buf may be NULL
  */
-void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon, const int *pipe_fds,
-			     char *buf)
+__attribute__((noreturn))
+void fcd_lib_parent_fail_and_exit(struct fcd_monitor *mon, const int *pipe_fds, char *buf)
 {
 	free(buf);
 	fcd_proc_close_pipe(pipe_fds);
-	fcd_lib_disable_monitor(mon);
+	fcd_lib_fail_and_exit(mon);
 }
 
 /*
  * Called by monitor threads to update message buffer, alerts, and PWM flags in
  * monitor structure - where main thread will act upon them.
  */
-void fcd_lib_set_mon_status(struct fcd_monitor *const mon, const char *const buf, const int warn,
-			    const int fail, const int *const disks, const uint8_t pwm_flags)
+void fcd_lib_set_mon_status2(struct fcd_monitor *const mon,
+			     const char *const restrict upper,
+			     const char *const restrict lower,
+			     const int warn,
+			     const int fail,
+			     const int *const disks,
+			     const uint8_t pwm_flags)
 {
 	unsigned i, led;
 	int ret;
@@ -321,7 +317,10 @@ void fcd_lib_set_mon_status(struct fcd_monitor *const mon, const char *const buf
 	if (ret != 0)
 		FCD_PT_ABRT("pthread_mutex_lock", ret);
 
-	memcpy(mon->buf + 45, buf, 20);
+	if (upper != NULL)
+		memcpy(mon->buf + 5, upper, 20);
+
+	memcpy(mon->buf + 45, lower, 20);
 
 	fcd_alert_update(warn ? FCD_ALERT_SET_REQ : FCD_ALERT_CLR_REQ,
 			 &mon->sys_warn);
@@ -345,6 +344,16 @@ void fcd_lib_set_mon_status(struct fcd_monitor *const mon, const char *const buf
 	ret = pthread_mutex_unlock(&mon->mutex);
 	if (ret != 0)
 		FCD_PT_ABRT("pthread_mutex_unlock", ret);
+}
+
+void fcd_lib_set_mon_status(struct fcd_monitor *const mon,
+			    const char *const buf,
+			    const int warn,
+			    const int fail,
+			    const int *const disks,
+			    const uint8_t pwm_flags)
+{
+	fcd_lib_set_mon_status2(mon, NULL, buf, warn, fail, disks, pwm_flags);
 }
 
 /*
@@ -547,6 +556,7 @@ int fcd_lib_disk_index(char c)
 	return -1;
 }
 
+#if 0
 /*
  * Mutex to prevent HDD temperature & S.M.A.R.T. threads from stepping on each
  * other
@@ -575,4 +585,26 @@ void fcd_lib_disk_mutex_unlock(void)
 	ret = pthread_mutex_unlock(&fcd_lib_disk_mutex);
 	if (ret != 0)
 		FCD_PT_ABRT("pthread_mutex_unlock", ret);
+}
+#endif
+
+int fcd_lib_snprintf(char *const restrict str,
+		     const size_t size,
+		     const char *const restrict format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = vsnprintf(str, size, format, ap);
+	va_end(ap);
+
+	if (ret < 0) {
+		FCD_PERROR("vsnprintf");
+	}
+	else if (ret < (int)size) {
+		str[ret] = ' ';
+	}
+
+	return ret;
 }

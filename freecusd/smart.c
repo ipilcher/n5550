@@ -15,12 +15,13 @@
  */
 
 #include "freecusd.h"
+#include "smart/status.h"
 
-#include <string.h>
+#include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
-
-#include "smart/status.h"
+#include <limits.h>
+#include <string.h>
 
 #define FCD_SMART_BUF_MAX	100
 
@@ -31,129 +32,135 @@ static char *fcd_smart_cmd[] = {
 	[3] = NULL
 };
 
-/* Alert thresholds */
-static const int fcd_hddtemp_warn_def = 45;
-static const int fcd_hddtemp_crit_def = 50;
-static const int fcd_hddtemp_fan_max_on_def = 43;
-static const int fcd_hddtemp_fan_max_hyst_def = 41;
-static const int fcd_hddtemp_fan_high_on_def = 40;
-static const int fcd_hddtemp_fan_high_on_hyst = 38;
+/* Alert & PWM thresholds */
+static const int fcd_smart_temp_defaults[FCD_CONF_TEMP_ARRAY_SIZE] = {
+	[FCD_CONF_TEMP_WARN]		= 45,		/* hdd_temp_warn */
+	[FCD_CONF_TEMP_FAIL]		= 50,		/* hdd_temp_crit */
+	[FCD_CONF_TEMP_FAN_MAX_ON]	= 43,		/* hdd_temp_fan_max_on */
+	[FCD_CONF_TEMP_FAN_MAX_HYST]	= 41,		/* hdd_temp_fan_max_hyst */
+	[FCD_CONF_TEMP_FAN_HIGH_ON]	= 40,		/* hdd_temp_fan_high_on */
+	[FCD_CONF_TEMP_FAN_HIGH_HYST]	= 38		/* hdd_temp_fan_high_hyst */
+};
 
-static const cip_opt_info fcd_smart_opts[] = {
+static int fcd_smart_temp_cb();
+static int fcd_smart_temp_disk_cb();
+static int fcd_smart_ignore_cb();
+
+static const cip_opt_info fcd_smart_disk_opts[] = {
 	{
 		.name			= "smart_monitor_ignore",
 		.type			= CIP_OPT_TYPE_BOOL,
-		.post_parse_fn		= fcd_conf_disk_bool_cb,
-		.post_parse_data	= &fcd_conf_disks[0].smart_ignore,
-	},
-	{	.name			= NULL		}
-};
-static int fcd_hddtemp_freecusd_cb();
-
-static const cip_opt_info fcd_hddtemp_freecusd_opts[] = {
-	{
-		.name			= "hdd_temp_warn",
-		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_warn,
-		.flags			= CIP_OPT_DEFAULT,
-		.default_value		= &fcd_hddtemp_warn_def,
-	},
-	{
-		.name			= "hdd_temp_crit",
-		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_crit,
-		.flags			= CIP_OPT_DEFAULT,
-		.default_value		= &fcd_hddtemp_crit_def,
-	},
-	{
-		.name			= "hdd_temp_fan_max_on",
-		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_on,
-		.flags			= CIP_OPT_DEFAULT,
-		.default_value		= &fcd_hddtemp_fan_max_on_def,
-	},
-	{
-		.name			= "hdd_temp_fan_max_hyst",
-		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_hyst,
-		.flags			= CIP_OPT_DEFAULT,
-		.default_value		= &fcd_hddtemp_fan_max_hyst_def,
-	},
-	{
-		.name			= "hdd_temp_fan_high_on",
-		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_on,
-		.flags			= CIP_OPT_DEFAULT,
-		.default_value		= &fcd_hddtemp_fan_high_on_def,
-	},
-	{
-		.name			= "hdd_temp_fan_high_hyst",
-		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_freecusd_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_hyst,
-		.flags			= CIP_OPT_DEFAULT,
-		.default_value		= &fcd_hddtemp_fan_high_on_hyst,
+		.post_parse_fn		= fcd_smart_ignore_cb,
+		.post_parse_data	= &fcd_smart_monitor,
 	},
 	{
 		.name			= NULL
 	}
 };
 
-static int fcd_hddtemp_raiddisk_cb();
+static const cip_opt_info fcd_smart_temp_opts[] = {
+	{
+		.name			= "hdd_temp_warn",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_smart_temp_cb,
+		.post_parse_data	= FCD_CONF_TEMP_WARN,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_smart_temp_defaults[FCD_CONF_TEMP_WARN],
+	},
+	{
+		.name			= "hdd_temp_crit",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_smart_temp_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAIL,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_smart_temp_defaults[FCD_CONF_TEMP_FAIL],
+	},
+	{
+		.name			= "hdd_temp_fan_max_on",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_smart_temp_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_MAX_ON,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_smart_temp_defaults[FCD_CONF_TEMP_FAN_MAX_ON],
+	},
+	{
+		.name			= "hdd_temp_fan_max_hyst",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_smart_temp_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_MAX_HYST,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_smart_temp_defaults[FCD_CONF_TEMP_FAN_MAX_HYST],
+	},
+	{
+		.name			= "hdd_temp_fan_high_on",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_smart_temp_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_HIGH_ON,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_smart_temp_defaults[FCD_CONF_TEMP_FAN_HIGH_ON],
+	},
+	{
+		.name			= "hdd_temp_fan_high_hyst",
+		.type			= CIP_OPT_TYPE_INT,
+		.post_parse_fn		= fcd_smart_temp_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_HIGH_HYST,
+		.flags			= CIP_OPT_DEFAULT,
+		.default_value		= &fcd_smart_temp_defaults[FCD_CONF_TEMP_FAN_HIGH_HYST],
+	},
+	{
+		.name			= NULL
+	}
+};
 
-static const cip_opt_info fcd_hddtemp_raiddisk_opts[] = {
+static const cip_opt_info fcd_smart_temp_disk_opts[] = {
 	{
 		.name			= "hddtemp_monitor_ignore",
 		.type			= CIP_OPT_TYPE_BOOL,
-		.post_parse_fn		= fcd_conf_disk_bool_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_ignore,
+		.post_parse_fn		= fcd_smart_ignore_cb,
+		.post_parse_data	= &fcd_hddtemp_monitor,
 	},
 	{
 		.name			= "hdd_temp_warn",
 		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_warn,
+		.post_parse_fn		= fcd_smart_temp_disk_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_WARN,
 	},
 	{
 		.name			= "hdd_temp_crit",
 		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_crit,
+		.post_parse_fn		= fcd_smart_temp_disk_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAIL,
 	},
 	{
 		.name			= "hdd_temp_fan_max_on",
 		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_on,
+		.post_parse_fn		= fcd_smart_temp_disk_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_MAX_ON,
 	},
 	{
 		.name			= "hdd_temp_fan_max_hyst",
 		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_max_hyst,
+		.post_parse_fn		= fcd_smart_temp_disk_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_MAX_HYST,
 	},
 	{
 		.name			= "hdd_temp_fan_high_on",
 		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_on,
+		.post_parse_fn		= fcd_smart_temp_disk_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_HIGH_ON,
 	},
 	{
 		.name			= "hdd_temp_fan_high_hyst",
 		.type			= CIP_OPT_TYPE_INT,
-		.post_parse_fn		= fcd_hddtemp_raiddisk_cb,
-		.post_parse_data	= &fcd_conf_disks[0].temp_fan_high_hyst,
+		.post_parse_fn		= fcd_smart_temp_disk_cb,
+		.post_parse_data	= (void *)FCD_CONF_TEMP_FAN_HIGH_HYST,
 	},
 	{
 		.name			= NULL
 	}
 };
 
+#if 0
 static int fcd_hddtemp_check_temp(cip_err_ctx *ctx, int temp)
 {
 	if (temp < -273) {
@@ -167,50 +174,215 @@ static int fcd_hddtemp_check_temp(cip_err_ctx *ctx, int temp)
 
 	return 0;
 }
+#endif
 
-static int fcd_hddtemp_freecusd_cb(cip_err_ctx *ctx, const cip_ini_value *value,
-				   const cip_ini_sect *sect __attribute__((unused)),
-				   const cip_ini_file *file __attribute__((unused)),
-				   void *post_parse_data)
+/*
+ * Gets a disk temperature setting (int) out of a cip_ini_value and
+ * validates it.  Returns the temperature (or INT_MIN on error).
+ */
+static int fcd_smart_temp_get_conf(cip_err_ctx *const ctx,
+				   const cip_ini_value *const value)
 {
-	int temp, *p;
-	unsigned i;
+	int temp;
 
-	p = (int *)(value->value);
-	temp = *p;
+	memcpy(&temp, value->value, sizeof temp);
 
-	if (fcd_hddtemp_check_temp(ctx, temp) == -1)
+	if (temp < -273) {
+		cip_err(ctx, "Invalid temperature (below absolute zero): %d", temp);
+		return INT_MIN;
+	}
+
+	if (temp <= 0 || temp >= 1000)
+		cip_err(ctx, "Probably not a useful HDD temperature: %d", temp);
+
+	return temp;
+}
+
+/*
+ * Callback for disk temperatures in the main ([freecusd]) config section
+ * Each value is copied to the fcd_conf_disks member for all detected
+ * RAID disks, where it may subsequently be overwritten by a disk-specific
+ * override.
+ */
+static int fcd_smart_temp_cb(cip_err_ctx *const ctx,
+			     const cip_ini_value *const value,
+			     const cip_ini_sect *const sect __attribute__((unused)),
+			     const cip_ini_file *const file __attribute__((unused)),
+			     void *const post_parse_data)
+{
+	enum fcd_conf_temp_type temp_type;
+	int temp, i;
+
+	if ((temp = fcd_smart_temp_get_conf(ctx, value)) == INT_MIN)
 		return -1;
 
-	for (i = 0; i < FCD_MAX_DISK_COUNT; ++i) {
-		p = fcd_conf_disk_member(post_parse_data, i);
-		*p = temp;
-	}
+	temp_type = (enum fcd_conf_temp_type)post_parse_data;
+
+	for (i = 0; i < FCD_MAX_DISK_COUNT; ++i)
+		fcd_conf_disks[i].temps[temp_type] = temp;
 
 	return 0;
 }
 
-static int fcd_hddtemp_raiddisk_cb(cip_err_ctx *ctx, const cip_ini_value *value,
-				   const cip_ini_sect *sect,
-				   const cip_ini_file *file,
-				   void *post_parse_data)
+/*
+ * Parse a RAID disk "name" (the X in a [raid_disk:X] config section).
+ * X must a decimal integer in the range 1 - FCD_MAX_DISK_COUNT; any
+ * whitespace or extra characters are an error.
+ *
+ * Returns the parsed integer or -1 to indicate a parsing or out of
+ * range error.
+ */
+static int fcd_smart_parse_raid_num(const char *name)
 {
-	int ret, temp;
+	int i = 0;
+
+	while (*name != 0) {
+
+		i *= 10;
+
+		if (!isdigit(*name))
+			return -1;
+
+		i += *name - '0';
+
+		/* Leading zeroes not allowed, so i should never be 0 here */
+		if (i == 0 || i > FCD_MAX_DISK_COUNT)
+			return -1;
+
+		++name;
+	}
+
+	/* Empty string? */
+	if (i == 0)
+		return -1;
+
+	return i;
+}
+
+/*
+ * Finds the index (in fcd_conf_disks) for a disk-specific override section in
+ * the config file (e.g. [raid_disk:X], where X is the disk number).
+ *
+ * Returns one of the following:
+ *
+ * 	* The index, which is a positive integer in the range 1 through fcd_conf_disk_count - 1
+ * 	* -1 indicates that "X" is not a valid integer or is out of range.
+ * 	* -2 indicates that the main ([freecusd]) section has not yet been processed, so it's
+ * 		too early to process disk-specific overrides.
+ * 	* -3 indicates that no RAID disk is connected in position X
+ */
+static int fcd_smart_disk_index(cip_err_ctx *const ctx,
+				const cip_ini_sect *const sect)
+{
+	/* Save our results to avoid repeatedly searching for the same disk */
+	static const cip_ini_sect *last_sect = NULL;
+	static int last_index;
+
+	int disk, i;
 
 	/*
-	 * If we're in the [raid_disk:X] section for a missing disk,
-	 * fcd_conf_disk_int_cb_help() will return 0, but temp won't be changed.
-	 * Set it to something that won't trigger a spurious warning/error.
+	 * fcd_conf_disks[0].temps[FCD_CONF_TEMP_WARN] will be changed to a valid
+	 * value when the main (i.e. [freecusd]) config section is processed.  If
+	 * it's still INT_MIN, the main section hasn't been processed yet, so it's
+	 * too early to process disk-specific overrides.
+	 *
+	 * Callback needs to return 1 to libcip, to defer processing, but 1 is a
+	 * valid index, so return -2.  (-1 indicates error.)
 	 */
-	temp = 25;
+	if (fcd_conf_disks[0].temps[FCD_CONF_TEMP_WARN] == INT_MIN)
+		return -2;
 
-	ret = fcd_conf_disk_int_cb_help(ctx, value, sect, file, post_parse_data,
-					&temp);
-	if (ret != 0)
-		return ret;
+	/* Same section as last time? */
+	if (sect == last_sect)
+		return last_index;
 
-	if (fcd_hddtemp_check_temp(ctx, temp) == -1)
+	if ((disk = fcd_smart_parse_raid_num(sect->node.name)) == -1) {
+		cip_err(ctx, "Invalid RAID disk number: %s (must be 1 - %d)",
+			sect->node.name, FCD_MAX_DISK_COUNT);
 		return -1;
+	}
+
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
+		/* DOM is on port 1; RAID disks are on ports 2+ */
+		if (fcd_conf_disks[i].port_no - 1 == disk)
+			break;
+	}
+
+	if (i == fcd_conf_disk_count) {
+		cip_err(ctx, "Ignoring section: [raid_disk:%s]: no such disk", sect->node.name);
+		i = -3;
+	}
+
+	/* Save the result, including "missing disk" results */
+	last_sect = sect;
+	last_index = i;
+
+	return i;
+}
+
+/*
+ * Callback for disk temperatures in disk-specific override sections (i.e.
+ * [raid_disk:X]).  May be called before main ([freecusd]) section has been
+ * processed.
+ */
+static int fcd_smart_temp_disk_cb(cip_err_ctx *const ctx,
+				  const cip_ini_value *const value,
+				  const cip_ini_sect *const sect,
+				  const cip_ini_file *const file __attribute__((unused)),
+				  void *const post_parse_data)
+{
+	enum fcd_conf_temp_type temp_type;
+	int temp, disk;
+
+	switch (disk = fcd_smart_disk_index(ctx, sect)) {
+		case -1:	return -1;	/* error */
+		case -2:	return  1;	/* main section not yet proecessed; defer */
+		case -3:	return  0;	/* "missing" disk; nothing to do */
+	}
+
+	if ((temp = fcd_smart_temp_get_conf(ctx, value)) == INT_MIN)
+		return -1;
+
+	temp_type = (enum fcd_conf_temp_type)post_parse_data;
+
+	fcd_conf_disks[disk].temps[temp_type] = temp;
+
+	return 0;
+}
+
+/*
+ * Callback for temp_ignore/disk_ignore booleans in [raid_disk:X] sections.
+ */
+static int fcd_smart_ignore_cb(cip_err_ctx *const ctx,
+			       const cip_ini_value *const value,
+			       const cip_ini_sect *const sect,
+			       const cip_ini_file *const file __attribute__((unused)),
+			       void *const post_parse_data)
+{
+	_Bool ignore;
+	int disk;
+
+	switch (disk = fcd_smart_disk_index(ctx, sect)) {
+		case -1:	return -1;	/* error */
+		case -2:	return  1;	/* main section not yet proecessed; defer */
+		case -3:	return  0;	/* "missing" disk; nothing to do */
+	}
+
+	memcpy(&ignore, value->value, sizeof ignore);
+
+	/* Monitor struct addresses used as "magic" numbers to indicate which flag */
+
+	if (post_parse_data == &fcd_smart_monitor) {
+
+		fcd_conf_disks[disk].smart_ignore = ignore;
+	}
+	else if (post_parse_data == &fcd_hddtemp_monitor) {
+
+		fcd_conf_disks[disk].temp_ignore = ignore;
+	}
+	else {
+		FCD_ABORT("This should never happen!\n");
+	}
 
 	return 0;
 }
@@ -219,8 +391,8 @@ __attribute__((noreturn))
 static void fcd_smart_disable(char *restrict cmd_buf,
 			      const int *const restrict pipe_fds)
 {
-	fcd_lib_disable_slave(&fcd_hddtemp_monitor);
-	fcd_lib_disable_cmd_mon(&fcd_smart_monitor, pipe_fds, cmd_buf);
+	fcd_lib_fail(&fcd_hddtemp_monitor);
+	fcd_lib_parent_fail_and_exit(&fcd_smart_monitor, pipe_fds, cmd_buf);
 }
 
 static int fcd_smart_exec(const int disk,
@@ -390,22 +562,18 @@ static void process_temps(int *const restrict status,
 
 			c[ret] = ' ';	/* sprintf 0-terminates */
 
-			if (temps[i] >= fcd_conf_disks[i].temp_crit) {
+			if (temps[i] >= fcd_conf_disks[i].temps[FCD_CONF_TEMP_FAIL]) {
 				alerts[i] = 1;
 				fail = 1;
 				warn = 0;
 			}
-			else if (temps[i] >= fcd_conf_disks[i].temp_warn
+			else if (temps[i] >= fcd_conf_disks[i].temps[FCD_CONF_TEMP_WARN]
 							|| temps[i] <= 0) {
 				alerts[i] = 1;
 				warn = !fail;
 			}
 
-			pwm_flags |= FCD_PWM_TEMP_FLAGS(temps[i],
-							fcd_conf_disks[i].temp_fan_max_on,
-							fcd_conf_disks[i].temp_fan_max_hyst,
-							fcd_conf_disks[i].temp_fan_high_on,
-							fcd_conf_disks[i].temp_fan_high_hyst);
+			pwm_flags |= fcd_pwm_temp_flags(temps[i], fcd_conf_disks[i].temps);
 		}
 	}
 
@@ -425,8 +593,8 @@ static void *fcd_smart_fn(void *arg __attribute__((unused)))
 
 	if (pipe2(pipe_fds, O_CLOEXEC) == -1) {
 		FCD_PERROR("pipe2");
-		fcd_lib_disable_slave(&fcd_hddtemp_monitor);
-		fcd_lib_disable_monitor(&fcd_smart_monitor);
+		fcd_lib_fail(&fcd_hddtemp_monitor);
+		fcd_lib_fail_and_exit(&fcd_smart_monitor);
 	}
 
 	cmd_buf = NULL;
@@ -435,27 +603,19 @@ static void *fcd_smart_fn(void *arg __attribute__((unused)))
 	do {
 		for (i = 0; i < fcd_conf_disk_count; ++i) {
 
-			if (!fcd_conf_disks[i].smart_ignore
-					|| !fcd_conf_disks[i].temp_ignore) {
+			if (fcd_conf_disks[i].smart_ignore && fcd_conf_disks[i].temp_ignore)
+				continue;
 
-				ret = fcd_smart_exec(i,
-						     &cmd_buf,
-						     &buf_size,
-						     pipe_fds);
-				if (ret == -3) {
-					goto break_outer_loop;
-				}
-				else if (ret == -2) {
-					status[i] = FCD_SMART_ERROR;
-					continue;
-				}
-
-				fcd_smart_parse(i,
-						status,
-						temps,
-						cmd_buf,
-						pipe_fds);
+			ret = fcd_smart_exec(i,	&cmd_buf, &buf_size, pipe_fds);
+			if (ret == -3) {
+				goto break_outer_loop;
 			}
+			else if (ret == -2) {
+				status[i] = FCD_SMART_ERROR;
+				continue;
+			}
+
+			fcd_smart_parse(i, status, temps, cmd_buf, pipe_fds);
 		}
 
 		process_status(status);
@@ -482,7 +642,7 @@ struct fcd_monitor fcd_smart_monitor = {
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_smart_monitor",
-	.raiddisk_opts		= fcd_smart_opts,
+	.raiddisk_opts		= fcd_smart_disk_opts,
 };
 
 struct fcd_monitor fcd_hddtemp_monitor = {
@@ -494,6 +654,7 @@ struct fcd_monitor fcd_hddtemp_monitor = {
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_hddtemp_monitor",
-	.raiddisk_opts		= fcd_hddtemp_raiddisk_opts,
-	.freecusd_opts		= fcd_hddtemp_freecusd_opts,
+	.raiddisk_opts		= fcd_smart_temp_disk_opts,
+	.freecusd_opts		= fcd_smart_temp_opts,
+	.current_pwm_flags	= FCD_FAN_HIGH_ON,
 };

@@ -137,6 +137,17 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 #define FCD_DISK_DEV_SIZE	       (sizeof "sd_")
 #define FCD_MAX_DISK_COUNT             5
 
+/* Each monitored temperature has these associated settings */
+enum fcd_conf_temp_type {
+	FCD_CONF_TEMP_WARN		= 0,
+	FCD_CONF_TEMP_FAIL,
+	FCD_CONF_TEMP_FAN_MAX_ON,
+	FCD_CONF_TEMP_FAN_MAX_HYST,
+	FCD_CONF_TEMP_FAN_HIGH_ON,
+	FCD_CONF_TEMP_FAN_HIGH_HYST
+};
+#define FCD_CONF_TEMP_ARRAY_SIZE	(FCD_CONF_TEMP_FAN_HIGH_HYST + 1)
+
 /* Monitor PWM flags */
 #define FCD_FAN_HIGH_HYST	0x01	/* above fan high hysteresis threshold */
 #define FCD_FAN_HIGH_ON		0x02	/* at or above fan high on threshold */
@@ -151,6 +162,15 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 		((temp) >= (high_on)) * FCD_FAN_HIGH_ON		|	\
 		((temp) > (high_hyst)) * FCD_FAN_HIGH_HYST		\
 	)
+
+__attribute__((always_inline))
+static inline uint8_t fcd_pwm_temp_flags(const int temp, const int *const conf)
+{
+	return	(temp >= conf[FCD_CONF_TEMP_FAN_MAX_ON])	* FCD_FAN_MAX_ON	|
+		(temp >  conf[FCD_CONF_TEMP_FAN_MAX_HYST])	* FCD_FAN_MAX_HYST	|
+		(temp >= conf[FCD_CONF_TEMP_FAN_HIGH_ON])	* FCD_FAN_HIGH_ON	|
+		(temp >  conf[FCD_CONF_TEMP_FAN_HIGH_HYST])	* FCD_FAN_HIGH_HYST;
+}
 
 /* Fan PWM states */
 enum fcd_pwm_state {
@@ -207,12 +227,15 @@ struct fcd_monitor {
 /* Config info about a RAID disk */
 struct fcd_raid_disk {
 	unsigned port_no;
+	int temps[FCD_CONF_TEMP_ARRAY_SIZE];
+#if 0
 	int temp_warn;
 	int temp_crit;
 	int temp_fan_max_on;
 	int temp_fan_max_hyst;
 	int temp_fan_high_on;
 	int temp_fan_high_hyst;
+#endif
 	_Bool temp_ignore;
 	_Bool smart_ignore;
 	char name[FCD_DISK_NAME_SIZE];
@@ -245,7 +268,8 @@ extern sigset_t fcd_proc_ppoll_sigmask;
 
 /* The monitors */
 extern struct fcd_monitor fcd_loadavg_monitor;
-extern struct fcd_monitor fcd_coretemp_monitor;
+extern struct fcd_monitor fcd_temp_core_monitor;
+extern struct fcd_monitor fcd_temp_it87_monitor;
 extern struct fcd_monitor fcd_sysfan_monitor;
 extern struct fcd_monitor fcd_hddtemp_monitor;
 extern struct fcd_monitor fcd_smart_monitor;
@@ -298,6 +322,13 @@ __attribute__((noreturn)) extern void *fcd_proc_fn(void *arg);
 extern void fcd_lib_set_mon_status(struct fcd_monitor *mon, const char *buf,
 				   int warn, int fail, const int *disks,
 				   uint8_t pwm_flags);
+extern void fcd_lib_set_mon_status2(struct fcd_monitor *const mon,
+				    const char *const restrict upper,
+				    const char *const restrict lower,
+				    const int warn,
+				    const int fail,
+				    const int *const disks,
+				    const uint8_t pwm_flags);
 extern int fcd_lib_monitor_sleep(time_t seconds);
 extern ssize_t fcd_lib_read(int fd, void *buf, size_t count,
 			    struct timespec *timeout);
@@ -310,14 +341,15 @@ extern ssize_t fcd_lib_cmd_output(int *status, char **cmd, char **buf,
 extern int fcd_lib_cmd_status(char **cmd, struct timespec *timeout,
 			      const int *pipe_fds);
 __attribute__((noreturn))
-extern void fcd_lib_disable_monitor(struct fcd_monitor *mon);
-extern void fcd_lib_disable_slave(struct fcd_monitor *mon);
+extern void fcd_lib_fail_and_exit(struct fcd_monitor *mon);
+extern void fcd_lib_fail(struct fcd_monitor *mon);
 __attribute__((noreturn))
-extern void fcd_lib_disable_cmd_mon(struct fcd_monitor *mon,
-				    const int *pipe_fds, char *buf);
+extern void fcd_lib_parent_fail_and_exit(struct fcd_monitor *mon, const int *pipe_fds, char *buf);
 extern int fcd_lib_disk_index(char c);
-extern void fcd_lib_disk_mutex_lock(void);
-extern void fcd_lib_disk_mutex_unlock(void);
+//extern void fcd_lib_disk_mutex_lock(void);
+//extern void fcd_lib_disk_mutex_unlock(void);
+__attribute__((format(printf, 3, 4)))
+extern int fcd_lib_snprintf(char *restrict str, size_t size, const char *restrict format, ...);
 
 /* Config file parsing - conf.c */
 extern void fcd_conf_parse(void);

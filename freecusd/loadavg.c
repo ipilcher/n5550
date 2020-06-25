@@ -81,7 +81,7 @@ static void fcd_loadavg_close_and_disable(FILE *fp, struct fcd_monitor *mon)
 {
 	if (fclose(fp) != 0)
 		FCD_PERROR("fclose");
-	fcd_lib_disable_monitor(mon);
+	fcd_lib_fail_and_exit(mon);
 
 }
 
@@ -99,7 +99,7 @@ static void *fcd_loadavg_fn(void *arg)
 	fp = fopen(path, "re");
 	if (fp == NULL) {
 		FCD_PERROR(path);
-		fcd_lib_disable_monitor(mon);
+		fcd_lib_fail_and_exit(mon);
 	}
 
 	if (setvbuf(fp, NULL, _IONBF, 0) != 0) {
@@ -133,15 +133,10 @@ static void *fcd_loadavg_fn(void *arg)
 				warn = 1;
 		}
 
-		ret = snprintf(buf, sizeof buf, "%.2f %.2f %.2f",
-			       avgs[0], avgs[1], avgs[2]);
-		if (ret < 0) {
-			FCD_PERROR("snprintf");
+		ret = fcd_lib_snprintf(buf, sizeof buf, "%.2f %.2f %.2f",
+				       avgs[0], avgs[1], avgs[2]);
+		if (ret < 0)
 			fcd_loadavg_close_and_disable(fp, mon);
-		}
-
-		if (ret < (int)sizeof buf)
-			buf[ret] = ' ';
 
 		fcd_lib_set_mon_status(mon, buf, warn, fail, NULL, 0);
 

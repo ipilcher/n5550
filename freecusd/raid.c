@@ -906,7 +906,7 @@ static void fcd_raid_disable(char *mdstat_buf, int mdstat_fd, int *pipe_fds,
 			     struct fcd_monitor *mon)
 {
 	fcd_raid_cleanup(mdstat_buf, mdstat_fd, pipe_fds);
-	fcd_lib_disable_monitor(mon);
+	fcd_lib_fail_and_exit(mon);
 }
 
 static int fcd_raid_setup(int *pipe_fds, int *mdstat_fd, char **mdstat_buf,
@@ -1037,15 +1037,10 @@ static void *fcd_raid_fn(void *arg)
 			fcd_raid_result(&ok, &warn, &fail, disks, array);
 		}
 
-		ret = snprintf(buf, sizeof buf, "OK:%d WARN:%d FAIL:%d",
-			       ok, warn, fail);
-		if (ret < 0) {
-			FCD_PERROR("snprintf");
+		ret = fcd_lib_snprintf(buf, sizeof buf, "OK:%d WARN:%d FAIL:%d",
+				       ok, warn, fail);
+		if (ret < 0)
 			fcd_raid_disable(mdstat_buf, fd, pipe_fds, mon);
-		}
-
-		if (ret < (int)sizeof buf)
-			buf[ret] = ' ';
 
 		fcd_lib_set_mon_status(mon, buf, warn, fail, disks, 0);
 

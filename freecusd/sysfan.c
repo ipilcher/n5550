@@ -72,7 +72,7 @@ static void fcd_sysfan_close_and_disable(FILE *fp, struct fcd_monitor *mon)
 {
 	if (fclose(fp) != 0)
 		FCD_PERROR("fclose");
-	fcd_lib_disable_monitor(mon);
+	fcd_lib_fail_and_exit(mon);
 
 }
 
@@ -87,7 +87,7 @@ static void *fcd_sysfan_fn(void *arg)
 	fp = fopen(fcd_sysfan_input, "re");
 	if (fp == NULL) {
 		FCD_PERROR(fcd_sysfan_input);
-		fcd_lib_disable_monitor(mon);
+		fcd_lib_fail_and_exit(mon);
 	}
 
 	if (setvbuf(fp, NULL, _IONBF, 0) != 0) {
@@ -113,14 +113,8 @@ static void *fcd_sysfan_fn(void *arg)
 		fail = (rpm <= fcd_sysfan_fail);
 		warn = fail ? 0 : (rpm <= fcd_sysfan_warn);
 
-		ret = snprintf(buf, sizeof buf, "%'d RPM", rpm);
-		if (ret < 0) {
-			FCD_PERROR("snprintf");
+		if (fcd_lib_snprintf(buf, sizeof buf, "%'d RPM", rpm) < 0)
 			fcd_sysfan_close_and_disable(fp, mon);
-		}
-
-		if (ret < (int)sizeof buf)
-			buf[ret] = ' ';
 
 		fcd_lib_set_mon_status(mon, buf, warn, fail, NULL, 0);
 

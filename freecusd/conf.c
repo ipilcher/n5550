@@ -37,7 +37,7 @@ struct fcd_raid_disk fcd_conf_disks[FCD_MAX_DISK_COUNT] = {
 	 * section has been processed yet.  (Will be set to default/provided
 	 * value of hdd_temp_warn.)
 	 */
-	[0] = { .temp_warn = INT_MIN }
+	[0].temps[FCD_CONF_TEMP_WARN] = INT_MIN
 };
 
 /*
@@ -60,123 +60,6 @@ int fcd_conf_mon_enable_cb(cip_err_ctx *ctx __attribute__((unused)),
 		FCD_INFO("%s monitor disabled by configuration setting\n",
 			 mon->name);
 	}
-
-	return 0;
-}
-
-/*
- * Finds the RAID disk index corresponding to a [raid_disk:X] instance.  Returns
- * -1 on error (invalid disk number) or 1 if the [freecusd] section has not yet
- * been processed.  If the disk number (X) is valid, and the [freecusd] section
- * has been processed, 0 is returned and either the index or UINT_MAX is written
- * to *index; UINT_MAX indicates that no disk was detected in position X.
- *
- * Thus callers must check both the return value of this function and the value
- * returned in *index.
- */
-static int fcd_conf_disk_idx(cip_err_ctx *ctx, unsigned *index,
-			     const cip_ini_sect *sect)
-{
-	static const cip_ini_sect *current_sect = NULL;
-	static unsigned current_index;
-
-	unsigned i;
-	char disk;
-
-	/*
-	 * Don't process any [raid_disk:*] settings until the [freecusd]
-	 * section has been processed.
-	 */
-	if (fcd_conf_disks[0].temp_warn == INT_MIN)
-		return 1;
-
-	/*
-	 * Options in an instance of a multi-instance section are called
-	 * sequentially, so it makes sense to "cache" this.  It also prevents
-	 * issuing multiple warnings for a missing disk's [raid_disk:X] section.
-	 */
-	if (sect == current_sect) {
-		*index = current_index;
-		return 0;
-	}
-
-	disk = sect->node.name[0];
-	if (disk < '1' || disk > '5' || sect->node.name[1] != 0) {
-		cip_err(ctx, "Invalid disk number: %s (must be 1-5)",
-			sect->node.name);
-		return -1;
-	}
-
-	for (i = 0; i < fcd_conf_disk_count; ++i) {
-
-		/* Disk 1 is on port 2, etc.  (Port 1 is the DOM.) */
-		if ((unsigned)(disk - '0') == fcd_conf_disks[i].port_no - 1)
-			break;
-	}
-
-	if (i == fcd_conf_disk_count) {
-		cip_err(ctx, "Ignoring section: [raid_disk:%s]: No such disk",
-			sect->node.name);
-		i = UINT_MAX;
-	}
-
-	current_sect = sect;
-	current_index = i;
-	*index = i;
-	return 0;
-}
-
-/*
- * Post-parse callback for disk-specific booleans
- */
-int fcd_conf_disk_bool_cb(cip_err_ctx *ctx __attribute__((unused)),
-			  const cip_ini_value *value, const cip_ini_sect *sect,
-			  const cip_ini_file *file __attribute__((unused)),
-			  void *post_parse_data)
-{
-	bool b, *p;
-	unsigned i;
-	int ret;
-
-	ret = fcd_conf_disk_idx(ctx, &i, sect);
-	if (ret != 0 || i == UINT_MAX)
-		return ret;
-
-	p = (bool *)(value->value);
-	b = *p;
-
-	p = fcd_conf_disk_member(post_parse_data, i);
-	*p = b;
-
-	return 0;
-}
-
-/*
- * Post-parse callback helper for disk-specific integers.
- *
- * Note that this function may return 0 without setting *result in the "missing
- * disk" case.
- */
-int fcd_conf_disk_int_cb_help(cip_err_ctx *ctx, const cip_ini_value *value,
-			      const cip_ini_sect *sect,
-			      const cip_ini_file *file __attribute__((unused)),
-			      void *post_parse_data, int *result)
-{
-	unsigned u;
-	int i, *p;
-
-	i = fcd_conf_disk_idx(ctx, &u, sect);
-	if (i != 0 || u == UINT_MAX)
-		return i;
-
-	p = (int *)(value->value);
-	i = *p;
-
-	p = fcd_conf_disk_member(post_parse_data, u);
-	*p = i;
-
-	if (result != NULL)
-		*result = i;
 
 	return 0;
 }
@@ -224,31 +107,6 @@ static int fcd_conf_per_mon(cip_err_ctx *ctx, struct fcd_monitor *mon,
 
 	return 0;
 }
-
-#if 0
-static void fcd_conf_dump_raid_disks(void)
-{
-	unsigned i;
-
-	if (!fcd_err_foreground)
-		return;
-
-	for (i = 0; i < fcd_conf_disk_count; ++i) {
-		printf("%s:\n", fcd_conf_disks[i].name);
-		printf("\tPort number: %u\n", fcd_conf_disks[i].port_no);
-		printf("\tS.M.A.R.T. monitor disabled: %s\n",
-		       fcd_conf_disks[i].smart_ignore ? "true" : "false");
-		printf("\tHDD temperature monitor disabled: %s\n",
-		       fcd_conf_disks[i].temp_ignore ? "true" : "false");
-		printf("\tWarning temperature: %d\n",
-		       fcd_conf_disks[i].temp_warn);
-		printf("\tCritical temperature: %d\n",
-		       fcd_conf_disks[i].temp_crit);
-	}
-
-	exit(0);
-}
-#endif
 
 void fcd_conf_parse(void)
 {
@@ -316,8 +174,5 @@ void fcd_conf_parse(void)
 	cip_ini_file_free(file);
 	cip_file_schema_free(file_schema);
 	cip_err_ctx_fini(&ctx);
-#if 0
-	fcd_conf_dump_raid_disks();
-#endif
 }
 
