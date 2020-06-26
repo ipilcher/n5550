@@ -633,10 +633,32 @@ break_outer_loop:
 	pthread_exit(NULL);
 }
 
+static void fcd_smart_dump_smart_cfg(void)
+{
+	int i;
+
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
+		FCD_DUMP("\t%s:\n", fcd_conf_disks[i].name);
+		FCD_DUMP("\t\tignore: %s\n", fcd_conf_disks[i].smart_ignore ? "true" : "false");
+	}
+}
+
+static void fcd_smart_dump_temp_cfg(void)
+{
+	int i;
+
+	for (i = 0; i < fcd_conf_disk_count; ++i) {
+		FCD_DUMP("\t%s:\n", fcd_conf_disks[i].name);
+		FCD_DUMP("\t\tignore: %s\n", fcd_conf_disks[i].temp_ignore ? "true" : "false");
+		fcd_lib_dump_temp_cfg(fcd_conf_disks[i].temps);
+	}
+}
+
 struct fcd_monitor fcd_smart_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
 	.name			= "SMART status",
 	.monitor_fn		= fcd_smart_fn,
+	.cfg_dump_fn		= fcd_smart_dump_smart_cfg,
 	.buf			= "....."
 				  "S.M.A.R.T. STATUS   "
 				  "                    ",
@@ -649,6 +671,7 @@ struct fcd_monitor fcd_hddtemp_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
 	.name			= "HDD temperature",
 	.monitor_fn		= 0,
+	.cfg_dump_fn		= fcd_smart_dump_temp_cfg,
 	.buf			= "....."
 				  "HDD TEMPERATURE     "
 				  "                    ",

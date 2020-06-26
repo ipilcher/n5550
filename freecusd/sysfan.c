@@ -130,10 +130,17 @@ static void *fcd_sysfan_fn(void *arg)
 	pthread_exit(NULL);
 }
 
+static void fcd_sysfan_dump_cfg(void)
+{
+	FCD_DUMP("\twarning: %d RPM\n", fcd_sysfan_warn);
+	FCD_DUMP("\tcritical: %d RPM\n", fcd_sysfan_fail);
+}
+
 struct fcd_monitor fcd_sysfan_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
 	.name			= "system fan",
 	.monitor_fn		= fcd_sysfan_fn,
+	.cfg_dump_fn		= fcd_sysfan_dump_cfg,
 	.buf			= "....."
 				  "SYSTEM FAN          "
 				  "                    ",

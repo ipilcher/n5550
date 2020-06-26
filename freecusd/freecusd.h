@@ -67,6 +67,8 @@ extern void fcd_err_child_pabort(const char *msg, const char *file, int line);
 					FCD_STRINGIFY(__LINE__) ": " \
 					__VA_ARGS__)
 
+#define FCD_DUMP(...)		fcd_err_msg(LOG_DEBUG, __VA_ARGS__)
+
 #define FCD_FATAL(...)		do { \
 					fcd_err_msg(LOG_ERR, "FATAL: " \
 						__FILE__ ":" \
@@ -213,6 +215,7 @@ struct fcd_monitor {
 	const cip_opt_info *freecusd_opts;
 	const cip_opt_info *raiddisk_opts;
 	void *(*monitor_fn)(void *);
+	void (*cfg_dump_fn)(void);
 	pthread_t tid;
 	_Bool enabled;
 	_Bool silent;						/* no front-panel message */
@@ -350,6 +353,7 @@ extern int fcd_lib_disk_index(char c);
 //extern void fcd_lib_disk_mutex_unlock(void);
 __attribute__((format(printf, 3, 4)))
 extern int fcd_lib_snprintf(char *restrict str, size_t size, const char *restrict format, ...);
+extern void fcd_lib_dump_temp_cfg(const int *const cfg);
 
 /* Config file parsing - conf.c */
 extern void fcd_conf_parse(void);

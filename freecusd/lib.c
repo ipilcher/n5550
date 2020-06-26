@@ -608,3 +608,13 @@ int fcd_lib_snprintf(char *const restrict str,
 
 	return ret;
 }
+
+void fcd_lib_dump_temp_cfg(const int *const cfg)
+{
+	FCD_DUMP("\t\twarning: %d\n", cfg[FCD_CONF_TEMP_WARN]);
+	FCD_DUMP("\t\tcritical: %d\n", cfg[FCD_CONF_TEMP_FAIL]);
+	FCD_DUMP("\t\tfan max on: %d\n", cfg[FCD_CONF_TEMP_FAN_MAX_ON]);
+	FCD_DUMP("\t\tfan max hysteresis: %d\n", cfg[FCD_CONF_TEMP_FAN_MAX_HYST]);
+	FCD_DUMP("\t\tfan high on: %d\n", cfg[FCD_CONF_TEMP_FAN_HIGH_ON]);
+	FCD_DUMP("\t\tfan high hysteresis: %d\n", cfg[FCD_CONF_TEMP_FAN_HIGH_HYST]);
+}

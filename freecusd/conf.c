@@ -108,6 +108,28 @@ static int fcd_conf_per_mon(cip_err_ctx *ctx, struct fcd_monitor *mon,
 	return 0;
 }
 
+static void fcd_conf_dump(void)
+{
+	struct fcd_monitor **mon;
+
+	if (!fcd_err_debug)
+		return;
+
+	for (mon = fcd_monitors; *mon != NULL; ++mon) {
+
+		if ((*mon)->name == NULL)
+			continue;
+
+		FCD_DUMP("%s monitor configuration:\n", (*mon)->name);
+		FCD_DUMP("\tenabled: %s\n", ((*mon)->enabled) ? "true" : "false");
+
+		if ((*mon)->cfg_dump_fn != 0)
+			(*mon)->cfg_dump_fn();
+
+		FCD_DUMP("\n");
+	}
+}
+
 void fcd_conf_parse(void)
 {
 	cip_sect_schema *freecusd_schema, *raiddisk_schema;
@@ -174,5 +196,7 @@ void fcd_conf_parse(void)
 	cip_ini_file_free(file);
 	cip_file_schema_free(file_schema);
 	cip_err_ctx_fini(&ctx);
+
+	fcd_conf_dump();
 }
 

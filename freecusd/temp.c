@@ -421,7 +421,6 @@ static void fcd_temp_process(const struct fcd_monitor *const mon,
 __attribute__((noreturn))
 static void *fcd_temp_fn(void *arg)
 {
-	struct fcd_monitor *mon = arg;
 	int warn, fail, i, ret, temps[FCD_TEMP_ID_ARRAY_SIZE];
 	uint8_t pwm_flags;
 	char upper[21], lower[21];
@@ -502,10 +501,27 @@ static void *fcd_temp_fn(void *arg)
 	pthread_exit(NULL);
 }
 
+static void fcd_temp_dump_core_config(void)
+{
+	FCD_DUMP("\tcore temperature thresholds:\n");
+	fcd_lib_dump_temp_cfg(fcd_temp_core_cfg);
+}
+
+static void fcd_temp_dump_it87_config(void)
+{
+	FCD_DUMP("\tCPU temperature thresholds:\n");
+	fcd_lib_dump_temp_cfg(fcd_temp_cpu_cfg);
+	FCD_DUMP("\tsystem temperature thresholds:\n");
+	fcd_lib_dump_temp_cfg(fcd_temp_sys_cfg);
+	FCD_DUMP("\tICH temperature thresholds:\n");
+	fcd_lib_dump_temp_cfg(fcd_temp_ich_cfg);
+}
+
 struct fcd_monitor fcd_temp_core_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
 	.name			= "CPU core temperature",
 	.monitor_fn		= fcd_temp_fn,
+	.cfg_dump_fn		= fcd_temp_dump_core_config,
 	.buf			= "....."
 				  "CPU CORE TEMPERATURE"
 				  "                    ",
@@ -517,8 +533,9 @@ struct fcd_monitor fcd_temp_core_monitor = {
 
 struct fcd_monitor fcd_temp_it87_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
-	.name			= "IT8728F  temperature",
+	.name			= "IT87 temperature",
 	.monitor_fn		= fcd_temp_fn,
+	.cfg_dump_fn		= fcd_temp_dump_it87_config,
 	.buf			= "....."
 				  "CPU CORE TEMPERATURE"
 				  "                    ",

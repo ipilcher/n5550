@@ -177,9 +177,25 @@ void fcd_pwm_fini(void)
 	}
 }
 
+static void fcd_pwm_dump_cfg(void)
+{
+	int i;
+
+	FCD_DUMP("\tPWM values:\n");
+
+	for (i = 0; i < FCD_PWM_STATE_ARRAY_SIZE; ++i) {
+
+		FCD_DUMP("\t\t%s: %d (\"%s\"[%zd])\n", fcd_pwm_state_names[i],
+						       fcd_pwm_values[i].value,
+						       fcd_pwm_values[i].s,
+						       fcd_pwm_values[i].len);
+	}
+}
+
 struct fcd_monitor fcd_pwm_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
 	.name			= "PWM",
+	.cfg_dump_fn		= fcd_pwm_dump_cfg,
 	.enabled		= 1,
 	.silent			= 1,
 	.enabled_opt_name	= "enable_sysfan_pwm",

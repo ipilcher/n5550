@@ -152,10 +152,19 @@ static void *fcd_loadavg_fn(void *arg)
 	pthread_exit(NULL);
 }
 
+static void fcd_loadavg_dump_cfg(void)
+{
+	FCD_DUMP("\twarning: %.2f %.2f %.2f\n",
+		 fcd_loadavg_warn[0], fcd_loadavg_warn[1], fcd_loadavg_warn[2]);
+	FCD_DUMP("\tcritical: %.2f %.2f %.2f\n",
+		 fcd_loadavg_crit[0], fcd_loadavg_crit[1], fcd_loadavg_crit[2]);
+}
+
 struct fcd_monitor fcd_loadavg_monitor = {
 	.mutex			= PTHREAD_MUTEX_INITIALIZER,
 	.name			= "load average",
 	.monitor_fn		= fcd_loadavg_fn,
+	.cfg_dump_fn		= fcd_loadavg_dump_cfg,
 	.buf			= "....."
 				  "LOAD AVERAGE        "
 				  "                    ",
