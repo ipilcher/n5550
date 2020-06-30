@@ -1,8 +1,10 @@
 policy_module(n5550, 0)
 
 require {
+	type default_context_t;
 	type device_t;
 	type devlog_t;
+	type file_context_t;
 	type fixed_disk_device_t;
 	type kernel_t;
 	type mdadm_exec_t;
@@ -69,13 +71,22 @@ allow freecusd_t proc_mdstat_t:file { read open };
 # Allow freecusd to write to selected sysfs files
 allow freecusd_t freecusd_sysfs_t:file { write open };
 
+# Allow freecusd to restore the SELinux context of "dynamic" sysfs files
+allow freecusd_t default_context_t:dir search;
+allow freecusd_t default_context_t:file { read open getattr };
+allow freecusd_t file_context_t:dir search;
+allow freecusd_t file_context_t:file { read open getattr };
+allow freecusd_t sysfs_t:file relabelfrom;
+allow freecusd_t freecusd_sysfs_t:file relabelto;
+
 # Allow freecusd to communicate with the front-panel LCD via ttyS0
 allow freecusd_t freecusd_tty_device_t:chr_file { read write open ioctl };
 
-# Allow freecusd to run mdadm and read its output through a pipe
+# Allow freecusd to run mdadm, read its output through a pipe, and kill it
 domain_auto_trans(freecusd_t, mdadm_exec_t, mdadm_t)
 allow mdadm_t freecusd_t:fifo_file { write getattr };
 allow mdadm_t freecusd_t:process sigchld;
+allow freecusd_t mdadm_t:process sigkill;
 
 # mdadm tries to access ttyS0
 dontaudit mdadm_t freecusd_tty_device_t:chr_file getattr;
@@ -93,6 +104,9 @@ allow freecusd_smart_t freecusd_t:fifo_file { write getattr };
 
 # Allow the helper to signal its exit to freecusd
 allow freecusd_smart_t freecusd_t:process sigchld;
+
+# Allow freecusd to kill the helper
+allow freecusd_t freecusd_smart_t:process sigkill;
 
 # Allow the helper to read disk information from sysfs
 allow freecusd_smart_t sysfs_t:dir search;
