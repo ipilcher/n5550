@@ -1,0 +1,108 @@
+policy_module(n5550, 0)
+
+require {
+	type device_t;
+	type devlog_t;
+	type fixed_disk_device_t;
+	type kernel_t;
+	type mdadm_exec_t;
+	type mdadm_t;
+	type proc_mdstat_t;
+	type proc_t;
+	type sysfs_t;
+	type udev_var_run_t;
+};
+
+
+#
+#	Types
+#
+
+type freecusd_t;
+type freecusd_exec_t;
+init_daemon_domain(freecusd_t, freecusd_exec_t)
+
+type freecusd_smart_t;
+type freecusd_smart_exec_t;
+domain_type(freecusd_smart_t);
+domain_entry_file(freecusd_smart_t, freecusd_smart_exec_t)
+role system_r types freecusd_smart_t;
+
+type freecusd_etc_t;
+files_config_file(freecusd_etc_t)
+
+type freecusd_sysfs_t;
+files_type(freecusd_sysfs_t);
+
+type freecusd_tty_device_t;
+files_type(freecusd_tty_device_t);
+
+# Allow freecusd_tty_device_t to be used on devtmpfs
+allow freecusd_tty_device_t device_t:filesystem associate;
+
+# Allow freecusd_sysfs_t to be used on sysfs
+allow freecusd_sysfs_t sysfs_t:filesystem associate;
+
+
+#
+#	freecusd
+#
+
+# Allow freecusd to write to the syslog
+allow freecusd_t self:unix_dgram_socket { create connect write };
+allow freecusd_t kernel_t:unix_dgram_socket sendto;
+allow freecusd_t devlog_t:sock_file write;
+#logging_dgram_send(freecusd_t)
+
+# Allow freecusd to read its configuration file
+allow freecusd_t freecusd_etc_t:file { read open getattr };
+
+# Allow freecusd to read from sysfs and /proc
+allow freecusd_t sysfs_t:dir read;
+allow freecusd_t sysfs_t:file { read open getattr };
+allow freecusd_t sysfs_t:lnk_file read;
+allow freecusd_t proc_t:file { read open };
+
+# Allow freecusd to read from /proc/mdstat
+allow freecusd_t proc_mdstat_t:file { read open };
+
+# Allow freecusd to write to selected sysfs files
+allow freecusd_t freecusd_sysfs_t:file { write open };
+
+# Allow freecusd to communicate with the front-panel LCD via ttyS0
+allow freecusd_t freecusd_tty_device_t:chr_file { read write open ioctl };
+
+# Allow freecusd to run mdadm and read its output through a pipe
+domain_auto_trans(freecusd_t, mdadm_exec_t, mdadm_t)
+allow mdadm_t freecusd_t:fifo_file { write getattr };
+allow mdadm_t freecusd_t:process sigchld;
+
+# mdadm tries to access ttyS0
+dontaudit mdadm_t freecusd_tty_device_t:chr_file getattr;
+
+
+#
+#	SMART helper
+#
+
+# Allow freecusd to run the SMART helper
+domain_auto_trans(freecusd_t, freecusd_smart_exec_t, freecusd_smart_t)
+
+# Allow the helper to send its output back to freecusd through a pipe
+allow freecusd_smart_t freecusd_t:fifo_file { write getattr };
+
+# Allow the helper to signal its exit to freecusd
+allow freecusd_smart_t freecusd_t:process sigchld;
+
+# Allow the helper to read disk information from sysfs
+allow freecusd_smart_t sysfs_t:dir search;
+allow freecusd_smart_t sysfs_t:lnk_file read;
+allow freecusd_smart_t sysfs_t:file { getattr read open };
+
+# ... and udev
+allow freecusd_smart_t udev_var_run_t:dir search;
+allow freecusd_smart_t udev_var_run_t:file { read open getattr };
+
+# Allow the helper to read SMART attributes from disks
+allow freecusd_smart_t fixed_disk_device_t:blk_file { read open getattr ioctl };
+allow freecusd_smart_t self:capability sys_rawio;

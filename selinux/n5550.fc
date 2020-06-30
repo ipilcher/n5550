@@ -1,0 +1,22 @@
+# Regular files
+/usr/bin/freecusd										system_u:object_r:freecusd_exec_t:s0
+/usr/libexec/freecusd-smart-helper								system_u:object_r:freecusd_smart_exec_t:s0
+/etc/freecusd.conf										system_u:object_r:freecusd_etc_t:s0
+
+# devtmpfs - created with correct context
+/dev/ttyS0											system_u:object_r:freecusd_tty_device_t:s0
+
+# sysfs - context set by systemd-tmpfiles (/usr/lib/tmpfiles.d/n5550.conf)
+/sys/class/gpio/export										system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0062/leds/n5550:orange:busy/brightness		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0062/leds/n5550:red:fail/brightness		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0064/leds/n5550:red:disk-stat-0/brightness		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0064/leds/n5550:red:disk-stat-1/brightness		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0064/leds/n5550:red:disk-stat-2/brightness		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0064/leds/n5550:red:disk-stat-3/brightness		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0064/leds/n5550:red:disk-stat-4/brightness		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/platform/it87.656/pwm3								system_u:object_r:freecusd_sysfs_t:s0
+
+# These don't exist until the GPIO is exported, so freecusd has to call selinux_restorecon itself
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0062/gpiochip1/gpio/gpio31/direction		system_u:object_r:freecusd_sysfs_t:s0
+/sys/devices/pci0000:00/0000:00:1f.3/i2c-0/0-0062/gpiochip1/gpio/gpio31/value			system_u:object_r:freecusd_sysfs_t:s0
