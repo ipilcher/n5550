@@ -31,21 +31,24 @@ static const char *const fcd_err_severities[] = {
 	"ABORT",
 };
 
-void fcd_err_msg(int priority, const char *format, ...)
+void fcd_err_vmsg(const int priority, const char *const format, va_list ap)
 {
-	va_list ap;
-
 	if (priority != LOG_DEBUG || fcd_err_debug) {
-
-		va_start(ap, format);
 
 		if (fcd_err_foreground)
 			vfprintf(stderr, format, ap);
 		else
 			vsyslog(priority, format, ap);
-
-		va_end(ap);
 	}
+}
+
+void fcd_err_msg(int priority, const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	fcd_err_vmsg(priority, format, ap);
+	va_end(ap);
 }
 
 void fcd_err_perror(const char *msg, const char *file, int line, int sev)

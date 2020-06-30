@@ -20,6 +20,7 @@
 #define _GNU_SOURCE	/* for ppoll, pipe2, vsyslog, etc. */
 
 #include <inttypes.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <pthread.h>
 #include <syslog.h>
@@ -374,6 +375,9 @@ extern int fcd_disk_detect(void);
 extern void fcd_pwm_update(struct fcd_monitor *mon);
 extern void fcd_pwm_init(void);
 extern void fcd_pwm_fini(void);
+
+/* Low level logging (for libselinux callback) */
+extern void fcd_err_vmsg(int priority, const char *format, va_list ap);
 
 
 #endif	/* FREECUSD_H */
