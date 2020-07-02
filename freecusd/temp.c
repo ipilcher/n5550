@@ -455,7 +455,7 @@ static void *fcd_temp_fn(void *arg)
 
 			memset(lower, ' ', sizeof lower);
 
-			ret = fcd_lib_snprintf(lower, sizeof lower, "CORE0: %d  CORE1: %d",
+			ret = fcd_lib_snprintf(lower, sizeof lower, "C0: %d   C1: %d",
 					       temps[FCD_TEMP_ID_CORE0] / 1000,
 					       temps[FCD_TEMP_ID_CORE1] / 1000);
 			if (ret < 0) {
@@ -474,20 +474,17 @@ static void *fcd_temp_fn(void *arg)
 			memset(upper, ' ', sizeof upper);
 			memset(lower, ' ', sizeof lower);
 
-			ret = fcd_lib_snprintf(upper, sizeof upper, "TEMPERATURE  CPU: %d",
-					       temps[FCD_TEMP_ID_CPU] / 1000);
-			if (ret > 0) {
-				ret = fcd_lib_snprintf(lower, sizeof lower, "ICH: %d  SYS: %d",
-						       temps[FCD_TEMP_ID_ICH] / 1000,
-						       temps[FCD_TEMP_ID_SYS] / 1000);
-			}
+			ret = fcd_lib_snprintf(lower, sizeof lower, "CPU: %d  SYS: %d/%d",
+					       temps[FCD_TEMP_ID_CPU] / 1000,
+					       temps[FCD_TEMP_ID_ICH] / 1000,
+					       temps[FCD_TEMP_ID_SYS] / 1000);
 
 			if (ret < 0) {
 				fcd_temp_fail(&fcd_temp_it87_monitor);
 			}
 			else {
-				fcd_lib_set_mon_status2(&fcd_temp_it87_monitor,
-							upper, lower, warn, fail, NULL, pwm_flags);
+				fcd_lib_set_mon_status(&fcd_temp_it87_monitor,
+						       lower, warn, fail, NULL, pwm_flags);
 			}
 		}
 
@@ -523,7 +520,7 @@ struct fcd_monitor fcd_temp_core_monitor = {
 	.monitor_fn		= fcd_temp_fn,
 	.cfg_dump_fn		= fcd_temp_dump_core_config,
 	.buf			= "....."
-				  "CPU CORE TEMPERATURE"
+				  "CPU TEMPERATURE     "
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_cpu_core_temp_monitor",
@@ -537,7 +534,7 @@ struct fcd_monitor fcd_temp_it87_monitor = {
 	.monitor_fn		= fcd_temp_fn,
 	.cfg_dump_fn		= fcd_temp_dump_it87_config,
 	.buf			= "....."
-				  "CPU CORE TEMPERATURE"
+				  "SYSTEM TEMPERATURE  "
 				  "                    ",
 	.enabled		= true,
 	.enabled_opt_name	= "enable_sys_temp_monitor",
