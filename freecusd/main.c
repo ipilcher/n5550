@@ -49,6 +49,7 @@ struct fcd_monitor *fcd_monitors[] = {
 };
 
 static volatile sig_atomic_t fcd_main_got_exit_signal = 0;
+static _Bool fcd_main_systemd = 0;
 
 /*
  * See https://sourceware.org/ml/libc-alpha/2012-06/msg00335.html for a
@@ -107,6 +108,9 @@ static void fcd_main_parse_args(int argc, char *argv[])
 		}
 		else if (strcmp("-d", argv[i]) == 0) {
 			fcd_err_debug = 1;
+		}
+		else if (strcmp("-s", argv[i]) == 0) {
+			fcd_main_systemd = 1;
 		}
 		else if (strcmp("-c", argv[i]) == 0) {
 			if (++i < argc) {
@@ -271,7 +275,7 @@ int main(int argc, char *argv[])
 	else {
 		openlog("freecusd", LOG_PID, LOG_DAEMON);
 		fcd_main_child_log_open();
-		if (daemon(0, 0) == -1)
+		if (!fcd_main_systemd && daemon(0, 0) == -1)
 			FCD_PABORT("daemon");
 	}
 
