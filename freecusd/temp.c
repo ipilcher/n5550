@@ -419,7 +419,7 @@ static void fcd_temp_process(const struct fcd_monitor *const mon,
 }
 
 __attribute__((noreturn))
-static void *fcd_temp_fn(void *arg)
+static void *fcd_temp_fn(void *const arg __attribute__((unused)))
 {
 	int warn, fail, i, ret, temps[FCD_TEMP_ID_ARRAY_SIZE];
 	uint8_t pwm_flags;
@@ -455,7 +455,7 @@ static void *fcd_temp_fn(void *arg)
 
 			memset(lower, ' ', sizeof lower);
 
-			ret = fcd_lib_snprintf(lower, sizeof lower, "C0: %d   C1: %d",
+			ret = fcd_lib_snprintf(lower, sizeof lower, "CORE0: %d  CORE1: %d",
 					       temps[FCD_TEMP_ID_CORE0] / 1000,
 					       temps[FCD_TEMP_ID_CORE1] / 1000);
 			if (ret < 0) {

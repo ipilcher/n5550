@@ -302,13 +302,13 @@ static int fcd_smart_disk_index(cip_err_ctx *const ctx,
 		return -1;
 	}
 
-	for (i = 0; i < fcd_conf_disk_count; ++i) {
+	for (i = 0; i < (int)fcd_conf_disk_count; ++i) {
 		/* DOM is on port 1; RAID disks are on ports 2+ */
-		if (fcd_conf_disks[i].port_no - 1 == disk)
+		if ((int)fcd_conf_disks[i].port_no - 1 == disk)
 			break;
 	}
 
-	if (i == fcd_conf_disk_count) {
+	if (i == (int)fcd_conf_disk_count) {
 		cip_err(ctx, "Ignoring section: [raid_disk:%s]: no such disk", sect->node.name);
 		i = -3;
 	}
@@ -637,7 +637,7 @@ static void fcd_smart_dump_smart_cfg(void)
 {
 	int i;
 
-	for (i = 0; i < fcd_conf_disk_count; ++i) {
+	for (i = 0; i < (int)fcd_conf_disk_count; ++i) {
 		FCD_DUMP("\t%s:\n", fcd_conf_disks[i].name);
 		FCD_DUMP("\t\tignore: %s\n", fcd_conf_disks[i].smart_ignore ? "true" : "false");
 	}
@@ -647,7 +647,7 @@ static void fcd_smart_dump_temp_cfg(void)
 {
 	int i;
 
-	for (i = 0; i < fcd_conf_disk_count; ++i) {
+	for (i = 0; i < (int)fcd_conf_disk_count; ++i) {
 		FCD_DUMP("\t%s:\n", fcd_conf_disks[i].name);
 		FCD_DUMP("\t\tignore: %s\n", fcd_conf_disks[i].temp_ignore ? "true" : "false");
 		fcd_lib_dump_temp_cfg(fcd_conf_disks[i].temps);
