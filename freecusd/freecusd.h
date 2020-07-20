@@ -158,14 +158,6 @@ enum fcd_conf_temp_type {
 #define FCD_FAN_MAX_ON		0x08	/* at or above fan max on threshold */
 
 /* Compute PWM flags from a temperature and a set of thresholds */
-#define FCD_PWM_TEMP_FLAGS(temp, max_on, max_hyst, high_on, high_hyst)	\
-	(								\
-		((temp) >= (max_on)) * FCD_FAN_MAX_ON		| 	\
-		((temp) > (max_hyst)) * FCD_FAN_MAX_HYST	|	\
-		((temp) >= (high_on)) * FCD_FAN_HIGH_ON		|	\
-		((temp) > (high_hyst)) * FCD_FAN_HIGH_HYST		\
-	)
-
 __attribute__((always_inline))
 static inline uint8_t fcd_pwm_temp_flags(const int temp, const int *const conf)
 {
