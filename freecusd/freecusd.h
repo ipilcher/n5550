@@ -173,7 +173,6 @@ enum fcd_pwm_state {
 	FCD_PWM_STATE_HIGH	= 1,
 	FCD_PWM_STATE_MAX	= 2
 };
-
 #define FCD_PWM_STATE_ARRAY_SIZE	(FCD_PWM_STATE_MAX + 1)
 
 /* String representations of the PWM states */
@@ -292,8 +291,7 @@ static inline void *fcd_conf_disk_member(unsigned char *member, unsigned idx)
  */
 
 /* Alert stuff - alert.c */
-extern void fcd_alert_update(enum fcd_alert_msg new,
-			     enum fcd_alert_msg *status);
+extern _Bool fcd_alert_update(enum fcd_alert_msg new, enum fcd_alert_msg *status);
 extern void fcd_alert_read_monitor(struct fcd_monitor *mon);
 extern void fcd_alert_leds_close(void);
 extern void fcd_alert_leds_open(void);

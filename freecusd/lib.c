@@ -310,7 +310,8 @@ void fcd_lib_set_mon_status2(struct fcd_monitor *const mon,
 			     const int *const disks,
 			     const uint8_t pwm_flags)
 {
-	unsigned i, led;
+	enum fcd_alert_msg new;
+	unsigned i, hw_disk;
 	int ret;
 
 	ret = pthread_mutex_lock(&mon->mutex);
@@ -322,10 +323,19 @@ void fcd_lib_set_mon_status2(struct fcd_monitor *const mon,
 
 	memcpy(mon->buf + 45, lower, 20);
 
-	fcd_alert_update(warn ? FCD_ALERT_SET_REQ : FCD_ALERT_CLR_REQ,
-			 &mon->sys_warn);
-	fcd_alert_update(fail ? FCD_ALERT_SET_REQ : FCD_ALERT_CLR_REQ,
-			 &mon->sys_fail);
+	if (fcd_alert_update(warn ? FCD_ALERT_SET_REQ : FCD_ALERT_CLR_REQ, &mon->sys_warn)) {
+		if (warn)
+			FCD_WARN("%s monitor system WARNING status set\n", mon->name);
+		else
+			FCD_INFO("%s monitor system warning status cleared\n", mon->name);
+	}
+
+	if (fcd_alert_update(fail ? FCD_ALERT_SET_REQ : FCD_ALERT_CLR_REQ, &mon->sys_fail)) {
+		if (fail)
+			FCD_ERR("%s monitor system CRITICAL status set\n", mon->name);
+		else
+			FCD_INFO("%s monitor system critical status cleared\n", mon->name);
+	}
 
 	mon->new_pwm_flags = pwm_flags;
 
@@ -333,11 +343,19 @@ void fcd_lib_set_mon_status2(struct fcd_monitor *const mon,
 
 		for (i = 0; i < fcd_conf_disk_count; ++i) {
 
-			led = fcd_conf_disks[i].port_no - 2;
+			new = disks[i] ? FCD_ALERT_SET_REQ : FCD_ALERT_CLR_REQ;
+			hw_disk = fcd_conf_disks[i].port_no - 2;
 
-			fcd_alert_update(disks[i] ? FCD_ALERT_SET_REQ :
-						    FCD_ALERT_CLR_REQ,
-					 &mon->disk_alerts[led]);
+			if (fcd_alert_update(new, &mon->disk_alerts[hw_disk])) {
+				if (new == FCD_ALERT_SET_REQ) {
+					FCD_WARN("%s monitor disk %u (%s) ALERT status set\n",
+						 mon->name, hw_disk + 1, fcd_conf_disks[i].name);
+				}
+				else {
+					FCD_INFO("%s monitor disk %u (%s) alert status cleared\n",
+						 mon->name, hw_disk + 1, fcd_conf_disks[i].name);
+				}
+			}
 		}
 	}
 

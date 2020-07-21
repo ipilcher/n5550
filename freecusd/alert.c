@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013, 2020 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -73,7 +73,7 @@ static struct fcd_alert fcd_alerts[] = {
  *
  ******************************************************************************/
 
-static void fcd_alert_set(enum fcd_alert_msg *status)
+static _Bool fcd_alert_set(enum fcd_alert_msg *status)
 {
 	switch (*status) {
 
@@ -82,7 +82,7 @@ static void fcd_alert_set(enum fcd_alert_msg *status)
 			 * Main thread has not yet acknowledged previous set
 			 * request; keep set request pending.
 			 */
-			return;
+			return 0;
 
 		case FCD_ALERT_CLR_REQ:
 			/*
@@ -91,26 +91,26 @@ static void fcd_alert_set(enum fcd_alert_msg *status)
 			 * so restore set ACK.
 			 */
 			*status = FCD_ALERT_SET_ACK;
-			return;
+			return 1;
 
 		case FCD_ALERT_SET_ACK:
 			/*
 			 * Alert is currently set; no action required.
 			 */
-			return;
+			return 0;
 
 		case FCD_ALERT_CLR_ACK:
 			/*
 			 * Alert is currently not set; set it.
 			 */
 			*status = FCD_ALERT_SET_REQ;
-			return;
+			return 1;
 	}
 
 	FCD_ABORT("Invalid enum value\n");
 }
 
-static void fcd_alert_clear(enum fcd_alert_msg *status)
+static _Bool fcd_alert_clear(enum fcd_alert_msg *status)
 {
 	switch (*status) {
 
@@ -121,38 +121,38 @@ static void fcd_alert_clear(enum fcd_alert_msg *status)
 			 * set, so restore clear ACK.
 			 */
 			*status = FCD_ALERT_CLR_ACK;
-			return;
+			return 1;
 
 		case FCD_ALERT_CLR_REQ:
 			/*
 			 * Main thread has not yet acknowledged previous clear
 			 * request; keep clear request pending.
 			 */
-			return;
+			return 0;
 
 		case FCD_ALERT_SET_ACK:
 			/*
 			 * Alert is currently set; clear it.
 			 */
 			*status = FCD_ALERT_CLR_REQ;
-			return;
+			return 1;
 
 		case FCD_ALERT_CLR_ACK:
 			/*
 			 * Alert is currently not set; no action required.
 			 */
-			return;
+			return 0;
 	}
 
 	FCD_ABORT("Invalid enum value\n");
 }
 
-void fcd_alert_update(enum fcd_alert_msg new, enum fcd_alert_msg *status)
+_Bool fcd_alert_update(enum fcd_alert_msg new, enum fcd_alert_msg *status)
 {
 	if (new == FCD_ALERT_SET_REQ)
-		fcd_alert_set(status);
+		return fcd_alert_set(status);
 	else if (new == FCD_ALERT_CLR_REQ)
-		fcd_alert_clear(status);
+		return fcd_alert_clear(status);
 	else
 		FCD_ABORT("Invalid alert status\n");
 }
