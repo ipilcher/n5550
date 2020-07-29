@@ -1,0 +1,8 @@
+[Unit]
+Description=Start Linux (MD) RAID checks
+
+[Service]
+Type=simple
+RemainAfterExit=no
+Environment="RAIDCHECK_DEBUG=1"
+ExecStart=/usr/local/bin/raidcheck

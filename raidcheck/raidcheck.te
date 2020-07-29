@@ -1,0 +1,32 @@
+policy_module(raidcheck, 0)
+
+require {
+	type devlog_t;
+	type kernel_t;
+	type sysfs_t;
+};
+
+type raidcheck_t;
+type raidcheck_exec_t;
+init_daemon_domain(raidcheck_t, raidcheck_exec_t)
+
+type raidcheck_etc_t;
+files_type(raidcheck_etc_t)
+
+type raidcheck_sysfs_t;
+files_type(raidcheck_sysfs_t)
+
+allow raidcheck_sysfs_t sysfs_t:filesystem associate;
+
+allow raidcheck_t self:unix_dgram_socket { create write connect };
+allow raidcheck_t devlog_t:sock_file write;
+allow raidcheck_t kernel_t:unix_dgram_socket sendto;
+
+allow raidcheck_t raidcheck_etc_t:file { read open getattr };
+
+allow raidcheck_t sysfs_t:dir read;
+allow raidcheck_t sysfs_t:file { read open };
+
+allow raidcheck_t raidcheck_sysfs_t:file { read open write };
+
+allow raidcheck_t self:capability sys_admin;

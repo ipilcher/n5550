@@ -1,0 +1,4 @@
+/usr/bin/raidcheck					system_u:object_r:raidcheck_exec_t:s0
+/usr/local/bin/raidcheck				system_u:object_r:raidcheck_exec_t:s0
+/etc/raidcheck.conf					system_u:object_r:raidcheck_etc_t:s0
+/sys/devices/virtual/block/[^/]+/md/sync_action		system_u:object_r:raidcheck_sysfs_t:s0
