@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013, 2021 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -58,9 +58,8 @@ static struct led_trigger n5550_ahci_led_triggers[5] = {
 
 static struct class *n5550_ahci_leds_sysfs_class;
 
-static ssize_t n5550_ahci_leds_enabled_show(struct class *class,
-					    struct class_attribute *attr,
-                                            char *buf)
+static ssize_t enabled_show(struct class *const class,
+			    struct class_attribute *const attr, char *const buf)
 {
 	int i;
 
@@ -76,9 +75,9 @@ static ssize_t n5550_ahci_leds_enabled_show(struct class *class,
 	return sprintf(buf, "%d\n", i);
 }
 
-static ssize_t n5550_ahci_leds_enabled_store(struct class *class,
-					     struct class_attribute *attr,
-                                             const char *buf, size_t count)
+static ssize_t enabled_store(struct class *const class,
+			     struct class_attribute *const attr,
+			     const char *const buf, const size_t count)
 {
 	struct module *libahci;
 	int ret, i;
@@ -145,9 +144,7 @@ static ssize_t n5550_ahci_leds_enabled_store(struct class *class,
 	return (ssize_t)count;
 }
 
-static CLASS_ATTR(enabled, 0644,
-		  n5550_ahci_leds_enabled_show,
-                  n5550_ahci_leds_enabled_store);
+static CLASS_ATTR_RW(enabled);
 
 static int n5550_create_sysfs_file(void)
 {
