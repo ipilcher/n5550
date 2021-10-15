@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013, 2021 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -22,15 +22,13 @@
 #include <linux/pci.h>
 #include <linux/gpio.h>
 
-#define N5550_ICH_GPIO_BASE_DEFAULT	195
 #define N5550_PCA9532_1_GPIO_BASE	16
 #define N5550_BOARD_ID			2
 
-static unsigned ich_gpio_base = N5550_ICH_GPIO_BASE_DEFAULT;
+static int ich_gpio_base = -1;
 module_param(ich_gpio_base, uint, 0444);
-MODULE_PARM_DESC(ich_gpio_base, "GPIO number base of ICH10R (default "
-		 __stringify(N5550_ICH_GPIO_BASE_DEFAULT) ")");
-
+MODULE_PARM_DESC(ich_gpio_base,
+		 "GPIO base of ICH10R - default is -1 (auto-detect)");
 /*
  * Disk activity LEDs are controlled by GPIO pins on the ICH10R chipset
  */
@@ -84,12 +82,47 @@ static const unsigned __initdata n5550_ich_gpio_led_offsets[5] = {
 	0, 2, 3, 4, 5,
 };
 
+static int __init n5550_match_ich_gpiochip(struct gpio_chip *const gc,
+				    __attribute__((unused)) void *data)
+{
+	/* Can gc->label be NULL? */
+	return (gc->label != NULL) && !strcmp(gc->label, "gpio_ich");
+}
+
+static int __init n5550_get_ich_gpiobase(void)
+{
+	const struct gpio_chip *gc;
+
+	if ((gc = gpiochip_find(NULL, n5550_match_ich_gpiochip)) == NULL) {
+		pr_warn("Couldn't find ICH GPIO chip\n");
+		return -ENODEV;
+	}
+
+	if (gc->base < 0) {
+		pr_warn("ICH GPIO chip has invalid base (%d)\n", gc->base);
+		return -EINVAL;
+	}
+
+	pr_debug("n5550_board: ICH GPIO base: %d\n", gc->base);
+
+	return gc->base;
+}
+
 static int __init n5550_ich_gpio_led_setup(void)
 {
 	unsigned i;
+	int base;
+
+	if (ich_gpio_base < 0) {
+		if ((base = n5550_get_ich_gpiobase()) < 0)
+			return base;
+	}
+	else {
+		base = ich_gpio_base;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(n5550_ich_gpio_leds); ++i) {
-		n5550_ich_gpio_leds[i].gpio = ich_gpio_base +
+		n5550_ich_gpio_leds[i].gpio = base +
 					      n5550_ich_gpio_led_offsets[i];
 	}
 
