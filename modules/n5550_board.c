@@ -485,3 +485,4 @@ module_exit(n5550_board_exit);
 MODULE_AUTHOR("Ian Pilcher <arequipeno@gmail.com>");
 MODULE_DESCRIPTION("Thecus N5550 GPIO and LED support");
 MODULE_LICENSE("GPL v2");
+MODULE_ALIAS("dmi:bvnPhoenixTechnologiesLtd*:bvrCDV_T??X64:*:pnMilsteadPlatform:*:rnGraniteWell:rvrFABA:*:ct9:*");
