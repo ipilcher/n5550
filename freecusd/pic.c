@@ -57,7 +57,9 @@ static int fcd_pic_selinux_log(const int type, const char *const format, ...)
 
 		default:
 			FCD_WARN("Unknown libselinux message type: %d\n", type);
+		/* fallthrough */
 		case SELINUX_ERROR:
+		/* fallthrough */
 		case SELINUX_AVC:
 			priority = LOG_ERR;
 	}
