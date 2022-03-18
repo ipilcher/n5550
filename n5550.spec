@@ -1,7 +1,7 @@
 Name:		n5550
 Summary:	Hardware support and monitoring for Thecus N5550 NAS
 Version:	0.6
-Release:	1%{?dist}
+Release:	2%{?dist}
 Source:		https://github.com/ipilcher/%{name}/archive/%{version}.tar.gz#/%{name}-%{version}.tar.gz
 License:	GPLv2
 Requires:	kernel-plus-devel gcc make
@@ -19,7 +19,7 @@ LCD display and LEDs to report system status.
 
 %build
 cd freecusd
-gcc -std=gnu99 -Os -Wall -Wextra -pthread -o freecusd *.c -lcip
+gcc -std=gnu99 -Os -Wall -Wextra -pthread -o freecusd *.c -lcip -lselinux
 gcc -std=gnu99 -Os -Wall -Wextra -pthread -o helper smart/helper.c -latasmart
 
 %install
@@ -74,6 +74,9 @@ rm -rf %{buildroot}
 %doc LICENSE README
 
 %changelog
+* Fri Mar 18 2022 Ian Pilcher <arequipeno@gmail.com> - 0.6-2
+- Add missing -lselinux to freecusd build command
+
 * Sat May 18 2019 Ian Pilcher <arequipeno@gmail.com> - 0.6-1
 * Version 0.6
 - Combine S.M.A.R.T. and HDD temp monitors
