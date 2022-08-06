@@ -386,14 +386,16 @@ static int __init n5550_pca9532_setup(void)
 		return -EBUSY;
 	}
 
-	n5550_pca9532_0_client = i2c_new_device(adapter, &n5550_pca9532_0_info);
+	n5550_pca9532_0_client
+			= i2c_new_client_device(adapter, &n5550_pca9532_0_info);
 	if (n5550_pca9532_0_client == NULL) {
 		module_put(adapter->owner);
 		pci_dev_put(dev);
 		return -ENODEV;
 	}
 
-	n5550_pca9532_1_client = i2c_new_device(adapter, &n5550_pca9532_1_info);
+	n5550_pca9532_1_client
+			= i2c_new_client_device(adapter, &n5550_pca9532_1_info);
 	if (n5550_pca9532_1_client == NULL) {
 		i2c_unregister_device(n5550_pca9532_0_client);
 		module_put(adapter->owner);
