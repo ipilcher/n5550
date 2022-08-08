@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2021 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013, 2021, 2022 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -21,6 +21,13 @@
 #include <linux/i2c.h>
 #include <linux/pci.h>
 #include <linux/gpio.h>
+#include <linux/version.h>
+
+#if LINUX_VERSION_MAJOR >= 5
+#define N5550_DEF_TRIGGER(x)	"blkdev"
+#else
+#define N5550_DEF_TRIGGER(x)	("n5550-ahci-" #x)
+#endif
 
 #define N5550_PCA9532_1_GPIO_BASE	16
 #define N5550_BOARD_ID			2
@@ -29,6 +36,7 @@ static int ich_gpio_base = -1;
 module_param(ich_gpio_base, uint, 0444);
 MODULE_PARM_DESC(ich_gpio_base,
 		 "GPIO base of ICH10R - default is -1 (auto-detect)");
+
 /*
  * Disk activity LEDs are controlled by GPIO pins on the ICH10R chipset
  */
@@ -36,31 +44,31 @@ MODULE_PARM_DESC(ich_gpio_base,
 static struct gpio_led n5550_ich_gpio_leds[5] = {
 	{
 		.name			= "n5550:green:disk-act-0",
-		.default_trigger	= "n5550-ahci-0",
+		.default_trigger	= N5550_DEF_TRIGGER(0),
 		.active_low		= 1,
 		.default_state		= LEDS_GPIO_DEFSTATE_OFF,
 	},
 	{
 		.name			= "n5550:green:disk-act-1",
-		.default_trigger	= "n5550-ahci-1",
+		.default_trigger	= N5550_DEF_TRIGGER(1),
 		.active_low		= 1,
 		.default_state		= LEDS_GPIO_DEFSTATE_OFF,
 	},
 	{
 		.name			= "n5550:green:disk-act-2",
-		.default_trigger	= "n5550-ahci-2",
+		.default_trigger	= N5550_DEF_TRIGGER(2),
 		.active_low		= 1,
 		.default_state		= LEDS_GPIO_DEFSTATE_OFF,
 	},
 	{
 		.name			= "n5550:green:disk-act-3",
-		.default_trigger	= "n5550-ahci-3",
+		.default_trigger	= N5550_DEF_TRIGGER(3),
 		.active_low		= 1,
 		.default_state		= LEDS_GPIO_DEFSTATE_OFF,
 	},
 	{
 		.name			= "n5550:green:disk-act-4",
-		.default_trigger	= "n5550-ahci-4",
+		.default_trigger	= N5550_DEF_TRIGGER(4),
 		.active_low		= 1,
 		.default_state		= LEDS_GPIO_DEFSTATE_OFF,
 	},
