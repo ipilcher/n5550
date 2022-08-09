@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2020 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013, 2020, 2022 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -15,6 +15,69 @@
  */
 
 #include "freecusd.h"
+
+#include <errno.h>
+#include <gpiod.h>
+
+#ifdef FCD_NEW_OS
+
+void fcd_pic_setup_gpio(void)
+{
+	/* Do everything in fcd_pic_reset() */
+}
+
+void fcd_pic_reset(void)
+{
+	static const struct gpiod_line_request_config rc = {
+		.consumer	= "freecusd",
+		.request_type	= GPIOD_LINE_REQUEST_DIRECTION_OUTPUT
+	};
+
+	struct timespec req, rem;
+	struct gpiod_chip *chip;
+	struct gpiod_line *line;
+	int err;
+
+	if ((chip = gpiod_chip_open_by_label("gpio-pca9532")) == NULL)
+		FCD_PFATAL("Failed to open LCD controller GPIO chip");
+
+	if ((line = gpiod_chip_get_line(chip, 15)) == NULL)
+		FCD_PFATAL("Failed to get LCD controller GPIO line");
+
+	if (gpiod_line_request(line, &rc, 0) != 0)
+		FCD_PFATAL("Failed to reserve LCD controller GPIO line");
+
+	if (gpiod_line_set_value(line, 1) != 0)
+		FCD_PFATAL("Failed to set LCD controller GPIO line HIGH");
+
+	req = (struct timespec){ .tv_sec = 0, .tv_nsec = 60000 };
+
+	while ((err = nanosleep(&req, &rem)) != 0) {
+
+		if (errno == EINTR)
+			req = rem;
+		else
+			FCD_PFATAL("Failed to sleep");
+	}
+
+	if (gpiod_line_set_value(line, 0) != 0)
+		FCD_PFATAL("Failed to set LCD controller GPIO line LOW");
+
+	req = (struct timespec){ .tv_sec = 2, .tv_nsec = 0 };
+
+	while ((err = nanosleep(&req, &rem)) != 0) {
+
+		if (errno == EINTR)
+			req = rem;
+		else
+			FCD_PFATAL("Failed to sleep");
+	}
+
+	gpiod_line_release(line);
+	gpiod_chip_close(chip);
+}
+
+#else  /* !FCD_NEW_OS */
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -206,3 +269,6 @@ void fcd_pic_reset(void)
 		FCD_WARN("Failed to reset LCD PIC\n");
 
 }
+
+#endif
+
