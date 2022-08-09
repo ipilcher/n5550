@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2020 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2020, 2022 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -198,11 +198,14 @@ static int fcd_err_int(intmax_t i)
  */
 static int fcd_err_txt(void)
 {
+/* sys_nerr and sys_errlist aren't available anymore :-( */
+#ifndef FCD_NEW_OS
 	if (errno >= 0 && errno < sys_nerr)
 		return fcd_err_str(sys_errlist[errno]);
 
 	if (fcd_err_lit("Unknown error: ") == -1)
 		return -1;
+#endif
 
 	return fcd_err_int(errno);
 }
