@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2016-2017, 2020 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016-2017, 2020, 2022 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -26,7 +26,7 @@
 #define FCD_SMART_BUF_MAX	100
 
 static char *fcd_smart_cmd[] = {
-	[0] = "/usr/libexec/freecusd-smart-helper",
+	[0] = "/usr/local/libexec/freecusd-smart-helper",
 	[1] = "freecusd-smart-helper",
 	[2] = NULL,			/* disk goes here */
 	[3] = NULL
