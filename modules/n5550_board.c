@@ -492,6 +492,9 @@ static void __exit n5550_board_exit(void)
 module_init(n5550_board_init);
 module_exit(n5550_board_exit);
 
+MODULE_SOFTDEP("pre: i2c_i801");
+MODULE_ALIAS("dmi:bvnPhoenixTechnologiesLtd*:bvrCDV_T??X64:*:pnMilsteadPlatform:*:rnGraniteWell:rvrFABA:*:ct9:*");
+
 MODULE_AUTHOR("Ian Pilcher <arequipeno@gmail.com>");
 MODULE_DESCRIPTION("Thecus N5550 GPIO and LED support");
 MODULE_LICENSE("GPL v2");
