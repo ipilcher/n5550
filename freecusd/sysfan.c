@@ -40,8 +40,7 @@ static const cip_opt_info fcd_sysfan_opts[] = {
 	{	.name			= NULL		}
 };
 
-static const char fcd_sysfan_input[] =
-		"/sys/devices/platform/it87.656/fan3_input";
+static const char fcd_sysfan_input[] = "/run/n5550/it87/fan3_input";
 
 /*
  * Configuration callback for alert thresholds

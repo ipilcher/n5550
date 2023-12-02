@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2020, 2023 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -31,7 +31,7 @@ const char *const fcd_pwm_state_names[FCD_PWM_STATE_ARRAY_SIZE] = {
 	"MAXIMUM"
 };
 
-static const char fcd_pwm_file[] = "/sys/devices/platform/it87.656/pwm3";
+static const char fcd_pwm_file[] = "/run/n5550/it87/pwm3";
 static enum fcd_pwm_state fcd_pwm_current_state = FCD_PWM_STATE_NORMAL;
 static int fcd_pwm_fd;
 

@@ -233,27 +233,27 @@ enum fcd_temp_id {
 
 static struct fcd_temp_input fcd_temp_inputs[FCD_TEMP_ID_ARRAY_SIZE] = {
 	[FCD_TEMP_ID_CORE0] = {
-		.path	= "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp2_input",
+		.path	= "/run/n5550/coretemp/temp2_input",
 		.cfg	= fcd_temp_core_cfg,
 		.mon	= &fcd_temp_core_monitor,
 	},
 	[FCD_TEMP_ID_CORE1] = {
-		.path	= "/sys/devices/platform/coretemp.0/hwmon/hwmon1/temp3_input",
+		.path	= "/run/n5550/coretemp/temp3_input",
 		.cfg	= fcd_temp_core_cfg,
 		.mon	= &fcd_temp_core_monitor,
 	},
 	[FCD_TEMP_ID_CPU] = {
-		.path	= "/sys/devices/platform/it87.656/temp1_input",
+		.path	= "/run/n5550/it87/temp1_input",
 		.cfg	= fcd_temp_cpu_cfg,
 		.mon	= &fcd_temp_it87_monitor,
 	},
 	[FCD_TEMP_ID_ICH] = {
-		.path	= "/sys/devices/platform/it87.656/temp2_input",
+		.path	= "/run/n5550/it87/temp2_input",
 		.cfg	= fcd_temp_ich_cfg,
 		.mon	= &fcd_temp_it87_monitor,
 	},
 	[FCD_TEMP_ID_SYS] = {
-		.path	= "/sys/devices/platform/it87.656/temp3_input",
+		.path	= "/run/n5550/it87/temp3_input",
 		.cfg	= fcd_temp_sys_cfg,
 		.mon	= &fcd_temp_it87_monitor,
 	}
