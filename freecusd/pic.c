@@ -26,6 +26,76 @@ void fcd_pic_setup_gpio(void)
 	/* Do everything in fcd_pic_reset() */
 }
 
+#ifdef FCD_NEW_GPIOD
+
+static void fcd_nanosleep(const time_t req_sec, const long req_nsec)
+{
+	struct timespec req, rem;
+
+	req.tv_sec = req_sec;
+	req.tv_nsec = req_nsec;
+
+	while (nanosleep(&req, &rem) != 0) {
+
+		if (errno == EINTR)
+			req = rem;
+		else
+			FCD_PFATAL("Failed to sleep");
+	}
+}
+
+void fcd_pic_reset(void)
+{
+	static const unsigned int offset = 15;
+
+	struct gpiod_chip *chip;
+	struct gpiod_line_settings *settings;
+	struct gpiod_line_config *config;
+	struct gpiod_line_request *request;
+	int ret;
+
+	/* Use udev rule to create /dev/gpio-pca9532 */
+	if ((chip = gpiod_chip_open("/dev/gpio-pca9532")) == NULL)
+		FCD_PFATAL("Failed to open LCD controller GPIO chip");
+
+	if ((settings = gpiod_line_settings_new()) == NULL)
+		FCD_PFATAL("Failed to create GPIO line settings");
+
+	gpiod_line_settings_set_direction(settings,
+					  GPIOD_LINE_DIRECTION_OUTPUT);
+
+	if ((config = gpiod_line_config_new()) == NULL)
+		FCD_PFATAL("Failed to create GPIO line config");
+
+	ret = gpiod_line_config_add_line_settings(config, &offset, 1, settings);
+	if (ret < 0)
+		FCD_PFATAL("Failed to add GPIO line settings to config");
+
+	if ((request = gpiod_chip_request_lines(chip, NULL, config)) == NULL)
+		FCD_PFATAL("Failed to reserve LCD controller GPIO line");
+
+	ret = gpiod_line_request_set_value(request, offset,
+					   GPIOD_LINE_VALUE_ACTIVE);
+	if (ret < 0)
+		FCD_PFATAL("Failed to set LCD controller GPIO line HIGH");
+
+	fcd_nanosleep(0, 60000);
+
+	ret = gpiod_line_request_set_value(request, offset,
+					   GPIOD_LINE_VALUE_INACTIVE);
+	if (ret < 0)
+		FCD_PFATAL("Failed to set LCD controller GPIO line LOW");
+
+	fcd_nanosleep(2, 0);
+
+	gpiod_line_request_release(request);
+	gpiod_line_config_free(config);
+	gpiod_line_settings_free(settings);
+	gpiod_chip_close(chip);
+}
+
+#else  /* !FCD_NEW_GPIOD */
+
 void fcd_pic_reset(void)
 {
 	static const struct gpiod_line_request_config rc = {
@@ -76,6 +146,8 @@ void fcd_pic_reset(void)
 	gpiod_line_release(line);
 	gpiod_chip_close(chip);
 }
+
+#endif  /* FCD_NEW_GPIOD */
 
 #else  /* !FCD_NEW_OS */
 
