@@ -1,3 +1,0 @@
-#!/bin/bash
-
-inst /usr/lib/udev/rules.d/99-n5550.rules

@@ -268,6 +268,7 @@ static int __init n5550_ahci_leds_init(void)
 	for (i = 0; i < 5; ++i) {
 		led_trigger_register(&n5550_ahci_led_triggers[i]);
 	}
+	pr_info("leds_n5550_ahci: Successfully installed LED hook\n");
 
 done:
 	mutex_unlock(&module_mutex);

@@ -2,7 +2,6 @@
 
 modprobe -b coretemp >/dev/null 2>&1
 modprobe -b it87 >/dev/null 2>&1
-modprobe -b n5550_board >/dev/null 2>&1
 #modprobe -b ledtrig_timer >/dev/null 2>&1
 
 exit 0
