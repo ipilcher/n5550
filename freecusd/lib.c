@@ -1,5 +1,5 @@
 /*
- * Copyright 2013-2014, 2016-2017, 2020 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013-2014, 2016-2017, 2020, 2026 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -253,7 +253,8 @@ ssize_t fcd_lib_read_all(int fd, char **buf, size_t *buf_size, size_t max_size,
  */
 void fcd_lib_fail(struct fcd_monitor *const mon)
 {
-	static const char disabled_msg[20] = "ERROR: NOT AVAILABLE";
+	static const char disabled_msg[20] __attribute__((nonstring)) =
+		"ERROR: NOT AVAILABLE";
 	int ret;
 
 	FCD_WARN("Disabling %s monitor\n", mon->name);

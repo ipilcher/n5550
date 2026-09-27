@@ -1,5 +1,5 @@
 /*
- * Copyright 2013, 2020, 2022 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013, 2020, 2022, 2026 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -44,6 +44,27 @@ static void fcd_nanosleep(const time_t req_sec, const long req_nsec)
 	}
 }
 
+/*
+ * https://github.com/torvalds/linux/commit/65a38a28a0b04af19a5e1fbf3869051412eeac96
+ */
+static _Bool fcd_pca9532_gpio_inverted(struct gpiod_line_request *request,
+				      unsigned int offset)
+{
+	enum gpiod_line_value value;
+	int ret;
+
+	ret = gpiod_line_request_set_value(request, offset,
+					   GPIOD_LINE_VALUE_ACTIVE);
+	if (ret < 0)
+		FCD_PFATAL("Failed to set GPIO line for polarity test");
+
+	value = gpiod_line_request_get_value(request, offset);
+	if (value == GPIOD_LINE_VALUE_ERROR)
+		FCD_PFATAL("Failed to read GPIO line for polarity test");
+
+	return value == GPIOD_LINE_VALUE_INACTIVE;
+}
+
 void fcd_pic_reset(void)
 {
 	static const unsigned int offset = 15;
@@ -53,6 +74,7 @@ void fcd_pic_reset(void)
 	struct gpiod_line_config *config;
 	struct gpiod_line_request *request;
 	int ret;
+	_Bool inv;
 
 	/* Use udev rule to create /dev/gpio-pca9532 */
 	if ((chip = gpiod_chip_open("/dev/gpio-pca9532")) == NULL)
@@ -74,17 +96,20 @@ void fcd_pic_reset(void)
 	if ((request = gpiod_chip_request_lines(chip, NULL, config)) == NULL)
 		FCD_PFATAL("Failed to reserve LCD controller GPIO line");
 
+	if ((inv = fcd_pca9532_gpio_inverted(request, offset)))
+		FCD_INFO("Detected PCA9532 GPIO inversion bug");
+
 	ret = gpiod_line_request_set_value(request, offset,
-					   GPIOD_LINE_VALUE_ACTIVE);
+					   GPIOD_LINE_VALUE_INACTIVE ^ inv);
 	if (ret < 0)
-		FCD_PFATAL("Failed to set LCD controller GPIO line HIGH");
+		FCD_PFATAL("Failed to set LCD controller GPIO line INACTIVE");
 
 	fcd_nanosleep(0, 60000);
 
 	ret = gpiod_line_request_set_value(request, offset,
-					   GPIOD_LINE_VALUE_INACTIVE);
+					   GPIOD_LINE_VALUE_ACTIVE ^ inv);
 	if (ret < 0)
-		FCD_PFATAL("Failed to set LCD controller GPIO line LOW");
+		FCD_PFATAL("Failed to set LCD controller GPIO line ACTIVE");
 
 	fcd_nanosleep(2, 0);
 

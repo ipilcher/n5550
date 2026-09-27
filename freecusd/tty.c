@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Ian Pilcher <arequipeno@gmail.com>
+ * Copyright 2013, 2026 Ian Pilcher <arequipeno@gmail.com>
  *
  * This program is free software.  You can redistribute it or modify it under
  * the terms of version 2 of the GNU General Public License (GPL), as published
@@ -25,6 +25,7 @@
 int fcd_tty_open(const char *tty)
 {
 	struct termios tio;
+	tcflag_t cflag;
 	int fd;
 
 	fd = open(tty, O_RDWR | O_NOCTTY | O_CLOEXEC);
@@ -48,13 +49,20 @@ int fcd_tty_open(const char *tty)
 
         tio.c_iflag = IGNPAR;
         tio.c_oflag = 0;
-        tio.c_cflag = CLOCAL | HUPCL | CREAD | CS8 | B9600;
+        tio.c_cflag = CLOCAL | HUPCL | CREAD | CS8;
         tio.c_lflag = 0;
         tio.c_cc[VTIME] = 0;
         tio.c_cc[VMIN] = 1;
 
 	if (cfsetospeed(&tio, B9600) == -1)
 		FCD_PERROR("cfsetospeed");
+
+	/* Not technically required, but it makes the cflag check work */
+	if (cfsetispeed(&tio, B9600) == -1)
+		FCD_PERROR("cfsetispeed");
+
+	/* cfsetospeed & cfsetispeed modify c_cflag value; capture it */
+	cflag = tio.c_cflag;
 
 	if (tcsetattr(fd, TCSANOW, &tio) == -1)
 		FCD_PERROR("tcsetattr");
@@ -68,7 +76,7 @@ int fcd_tty_open(const char *tty)
 	else {
 		if (	tio.c_iflag != IGNPAR ||
 			tio.c_oflag != 0 ||
-			tio.c_cflag != (CLOCAL | HUPCL | CREAD | CS8 | B9600) ||
+			tio.c_cflag != cflag ||
 			tio.c_lflag != 0 ||
 			tio.c_cc[VTIME] != 0 ||
 			tio.c_cc[VMIN] != 1 ||
